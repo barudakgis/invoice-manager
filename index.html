@@ -438,7 +438,7 @@ table.dt tr:last-child td{border-bottom:none}
     <div class="login-mono" id="loginMono">IM</div>
     <h1 id="loginTitle">Universal Invoice Manager</h1>
     <p class="sub">Masuk untuk mengelola invoice bisnis Anda</p>
-    <div class="ver-badge">versi 2.0.1</div>
+    <div class="ver-badge">versi 2.1.0</div>
     <div class="login-err" id="loginErr"></div>
     <div class="field">
       <label>Username</label>
@@ -665,7 +665,7 @@ function pasangTombolBersih(root){
 }
 
 /* ---- Versi & Lisensi ---- */
-var APP_VERSION = '2.0.1';
+var APP_VERSION = '2.1.0';
 function lic(){ return (state.db && state.db.license) || { mode:'trial', valid:true, daysLeft:null }; }
 function isViewer(){ return lic().valid === false; }
 // Blokir aksi tulis saat Mode Viewer, dengan pesan yang jelas
@@ -3035,7 +3035,8 @@ function hexToRgb(hex){
 var KAT_MASUK = ['Penjualan','Jasa','Pelunasan Invoice','Modal','Lainnya'];
 var KAT_KELUAR = ['Pembelian Bahan','Gaji/Upah','Sewa','Listrik/Air','Transport','Peralatan','Pemasaran','Pajak','Lainnya'];
 var METODE_KAS = ['tunai','transfer','qris','dana','ovo','gopay','shopeepay','linkaja','lainnya'];
-var kasBulan = '';   // '' = semua, format YYYY-MM
+var kasTahun = '';   // '' = semua tahun, format YYYY
+var kasBulan = '';   // '' = semua bulan, format MM
 var kasJenis = 'semua';
 
 function kasList(){
@@ -3044,12 +3045,33 @@ function kasList(){
            String(b.createdAt||'').localeCompare(String(a.createdAt||''));
   });
 }
+function cocokPeriode(k, th, bl){
+  var t = String(k.tanggal||'');
+  if(th && t.substring(0,4) !== th) return false;
+  if(bl && t.substring(5,7) !== bl) return false;
+  return true;
+}
 function kasTerfilter(){
   return kasList().filter(function(k){
-    if(kasBulan && String(k.tanggal||'').substring(0,7) !== kasBulan) return false;
+    if(!cocokPeriode(k, kasTahun, kasBulan)) return false;
     if(kasJenis !== 'semua' && k.jenis !== kasJenis) return false;
     return true;
   });
+}
+/* Daftar tahun yang ada datanya */
+function daftarTahun(){
+  var set = {};
+  (state.db.kas||[]).forEach(function(k){ var t=String(k.tanggal||'').substring(0,4); if(t) set[t]=1; });
+  var arr = Object.keys(set).sort().reverse();
+  var thIni = String(new Date().getFullYear());
+  if(arr.indexOf(thIni) < 0) arr.unshift(thIni);
+  return arr;
+}
+var NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function labelPeriode(th, bl){
+  if(th && bl) return NAMA_BULAN[Number(bl)-1] + ' ' + th;
+  if(th) return 'Tahun ' + th;
+  return 'Sepanjang Waktu';
 }
 function viewKas(){
   var semua = kasList();
@@ -3061,23 +3083,25 @@ function viewKas(){
   var saldoTotal = semua.reduce(function(s,k){ return s + (k.jenis==='masuk' ? k.jumlah : -k.jumlah); },0);
   var cur = (state.db.settings||{}).defaultCurrency || 'IDR';
 
-  // Daftar bulan yang tersedia
-  var bulanSet = {};
-  semua.forEach(function(k){ var b=String(k.tanggal||'').substring(0,7); if(b) bulanSet[b]=1; });
-  var bulanOpts = '<option value="">Semua Bulan</option>' + Object.keys(bulanSet).sort().reverse().map(function(b){
-    return '<option value="'+b+'"'+(kasBulan===b?' selected':'')+'>'+namaBulan(b)+'</option>';
+  var tahunOpts = '<option value="">Semua Tahun</option>' + daftarTahun().map(function(t){
+    return '<option value="'+t+'"'+(kasTahun===t?' selected':'')+'>'+t+'</option>';
+  }).join('');
+  var bulanOpts = '<option value="">Semua Bulan</option>' + NAMA_BULAN.map(function(n,i){
+    var v = String(i+1).padStart(2,'0');
+    return '<option value="'+v+'"'+(kasBulan===v?' selected':'')+'>'+n+'</option>';
   }).join('');
 
   var kartu =
     '<div class="kas-stats">' +
       '<div class="kas-card in"><div class="l">Pemasukan</div><div class="n">'+fmtMoney(masuk,cur)+'</div></div>' +
       '<div class="kas-card out"><div class="l">Pengeluaran</div><div class="n">'+fmtMoney(keluar,cur)+'</div></div>' +
-      '<div class="kas-card net'+(saldo<0?' minus':'')+'"><div class="l">Selisih '+(kasBulan?namaBulan(kasBulan):'Semua')+'</div><div class="n">'+fmtMoney(saldo,cur)+'</div></div>' +
+      '<div class="kas-card net'+(saldo<0?' minus':'')+'"><div class="l">Selisih '+esc(labelPeriode(kasTahun,kasBulan))+'</div><div class="n">'+fmtMoney(saldo,cur)+'</div></div>' +
       '<div class="kas-card bal'+(saldoTotal<0?' minus':'')+'"><div class="l">Saldo Kas</div><div class="n">'+fmtMoney(saldoTotal,cur)+'</div></div>' +
     '</div>';
 
   var toolbar = '<div class="toolbar">' +
     (isViewer()?'':'<button class="btn btn-primary btn-sm" onclick="openKasEditor()">+ Catat Transaksi</button>') +
+    '<select onchange="kasTahun=this.value;render()">'+tahunOpts+'</select>' +
     '<select onchange="kasBulan=this.value;render()">'+bulanOpts+'</select>' +
     '<select onchange="kasJenis=this.value;render()">' +
       '<option value="semua"'+(kasJenis==='semua'?' selected':'')+'>Semua Jenis</option>' +
@@ -3085,10 +3109,11 @@ function viewKas(){
       '<option value="keluar"'+(kasJenis==='keluar'?' selected':'')+'>Pengeluaran</option>' +
     '</select>' +
     (isViewer()?'':'<button class="btn btn-ghost btn-sm" onclick="tarikInvoice()">⭳ Tarik Invoice Lunas</button>') +
+    (isViewer()?'':'<button class="btn btn-ghost btn-sm" onclick="openImporKas()">⭱ Impor Data Lama</button>') +
     '<button class="btn btn-ghost btn-sm" onclick="unduhKasCsv()">⬇ CSV</button>' +
     '</div>';
 
-  var grafik = semua.length ? '<div class="card card-p"><div class="section-title" style="margin-top:0">Arus Kas 6 Bulan Terakhir</div>' +
+  var grafik = semua.length ? '<div class="card card-p"><div class="section-title" style="margin-top:0">Arus Kas '+(kasTahun?('Tahun '+kasTahun):'6 Bulan Terakhir')+'</div>' +
     '<div style="height:230px"><canvas id="kasChart"></canvas></div></div>' : '';
 
   var perKategori = ringkasKategori(data, cur);
@@ -3132,9 +3157,13 @@ function afterKas(){
   var el = $('kasChart'); if(!el || typeof Chart === 'undefined') return;
   if(window._kasChart){ window._kasChart.destroy(); window._kasChart = null; }
   var bulan = [], skrg = new Date();
-  for(var i=5;i>=0;i--){
-    var d = new Date(skrg.getFullYear(), skrg.getMonth()-i, 1);
-    bulan.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  if(kasTahun){
+    for(var m=1;m<=12;m++) bulan.push(kasTahun+'-'+String(m).padStart(2,'0'));
+  } else {
+    for(var i=5;i>=0;i--){
+      var d = new Date(skrg.getFullYear(), skrg.getMonth()-i, 1);
+      bulan.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+    }
   }
   var masuk = bulan.map(function(b){
     return (state.db.kas||[]).filter(function(k){ return k.jenis==='masuk' && String(k.tanggal||'').substring(0,7)===b; })
@@ -3255,17 +3284,136 @@ function unduhKasCsv(){
   var blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'pembukuan-' + (kasBulan||'semua') + '.csv';
+  a.download = 'pembukuan-' + (kasTahun||'semua') + (kasBulan?('-'+kasBulan):'') + '.csv';
   document.body.appendChild(a); a.click(); a.remove();
   toast('CSV diunduh ✓');
 }
 
 
+/* ---------------- IMPOR DATA LAMA (CSV) ---------------- */
+var _imporBaris = [];
+function openImporKas(){
+  if(!guardWrite()) return;
+  _imporBaris = [];
+  openModal('<div class="modal" style="max-width:640px"><h3>Impor Data Pembukuan Lama</h3>' +
+    '<p class="mini">Untuk memasukkan transaksi tahun-tahun sebelumnya sekaligus, tanpa mengetik satu per satu.</p>' +
+    '<div class="card card-p" style="background:var(--bg);margin:12px 0">' +
+      '<b style="font-size:13px">Langkah</b>' +
+      '<ol style="margin:6px 0 0 18px;font-size:12.5px;line-height:1.8">' +
+        '<li>Unduh berkas contoh, buka di Excel/Google Sheets.</li>' +
+        '<li>Isi datanya mengikuti format kolom yang ada.</li>' +
+        '<li>Simpan sebagai <b>CSV</b>, lalu unggah di bawah ini.</li>' +
+      '</ol>' +
+      '<button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="unduhTemplatKas()">⬇ Unduh Berkas Contoh (CSV)</button>' +
+    '</div>' +
+    '<div class="field"><label>Berkas CSV</label>' +
+      '<label class="btn btn-primary btn-block" style="cursor:pointer">📂 Pilih Berkas CSV' +
+      '<input type="file" accept=".csv,text/csv" style="display:none" onchange="bacaCsvKas(this)"></label></div>' +
+    '<div id="imporHasil"></div>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Tutup</button></div></div>');
+}
+function unduhTemplatKas(){
+  var contoh = [
+    ['tanggal','jenis','kategori','keterangan','jumlah','metode'],
+    ['2025-01-05','masuk','Penjualan','Penjualan bulan Januari','15000000','transfer'],
+    ['2025-01-08','keluar','Pembelian Bahan','Beli besi dan plat','4500000','tunai'],
+    ['2025-01-25','keluar','Gaji/Upah','Upah 3 tukang','6000000','tunai'],
+    ['2025-02-03','masuk','Jasa','Servis mesin','2500000','qris']
+  ].map(function(r){ return r.map(function(v){ return '"'+v+'"'; }).join(','); }).join('\n');
+  var blob = new Blob(['\ufeff'+contoh], { type:'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'contoh-impor-pembukuan.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('Berkas contoh diunduh ✓');
+}
+/* Pemisah CSV yang menghormati tanda kutip */
+function pisahCsv(baris){
+  var out=[], cur='', dalam=false;
+  for(var i=0;i<baris.length;i++){
+    var c = baris[i];
+    if(c === '"'){
+      if(dalam && baris[i+1] === '"'){ cur += '"'; i++; }
+      else dalam = !dalam;
+    } else if((c === ',' || c === ';') && !dalam){ out.push(cur); cur=''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map(function(x){ return x.trim(); });
+}
+function normalTanggal(t){
+  t = String(t||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  var m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(t);   // dd/mm/yyyy
+  if(m) return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+  m = /^(\d{4})[\/](\d{1,2})[\/](\d{1,2})$/.exec(t);
+  if(m) return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+  return '';
+}
+function bacaCsvKas(input){
+  var f = input.files && input.files[0]; if(!f) return;
+  var r = new FileReader();
+  r.onload = function(e){
+    var teks = String(e.target.result).replace(/^\ufeff/,'');
+    var baris = teks.split(/\r?\n/).filter(function(x){ return x.trim(); });
+    if(baris.length < 2){ toast('Berkas kosong atau hanya berisi judul kolom.'); return; }
+    var kolom = pisahCsv(baris[0]).map(function(h){ return h.toLowerCase().replace(/"/g,''); });
+    var idx = function(nama){ return kolom.indexOf(nama); };
+    var iT=idx('tanggal'), iJ=idx('jenis'), iK=idx('kategori'), iD=idx('keterangan'), iN=idx('jumlah'), iM=idx('metode');
+    if(iT<0 || iN<0){ toast('Kolom "tanggal" dan "jumlah" wajib ada.'); return; }
+
+    var siap=[], tolak=[];
+    for(var i=1;i<baris.length;i++){
+      var c = pisahCsv(baris[i]);
+      var tgl = normalTanggal(c[iT]);
+      var jml = Number(String(c[iN]||'').replace(/[^0-9.-]/g,''))||0;
+      if(!tgl){ tolak.push('Baris '+(i+1)+': tanggal "'+(c[iT]||'')+'" tidak dikenali'); continue; }
+      if(jml<=0){ tolak.push('Baris '+(i+1)+': jumlah tidak valid'); continue; }
+      siap.push({ tanggal:tgl, jenis:(iJ>=0?c[iJ]:'masuk'), kategori:(iK>=0?c[iK]:''),
+        keterangan:(iD>=0?c[iD]:''), jumlah:jml, metode:(iM>=0?c[iM]:'tunai') });
+    }
+    _imporBaris = siap;
+    var masuk = siap.filter(function(x){ return String(x.jenis).toLowerCase().indexOf('keluar')<0; });
+    var keluar = siap.filter(function(x){ return String(x.jenis).toLowerCase().indexOf('keluar')>=0; });
+    var totalM = masuk.reduce(function(s,x){return s+x.jumlah;},0);
+    var totalK = keluar.reduce(function(s,x){return s+x.jumlah;},0);
+    var cur = (state.db.settings||{}).defaultCurrency||'IDR';
+    var rentang = siap.length ? (siap.map(function(x){return x.tanggal;}).sort()[0] + ' s/d ' + siap.map(function(x){return x.tanggal;}).sort().reverse()[0]) : '-';
+
+    $('imporHasil').innerHTML =
+      '<div class="card card-p" style="margin-top:12px">' +
+        '<b style="font-size:13px">Pratinjau</b>' +
+        '<div class="detail-row"><span>Siap diimpor</span><b>'+siap.length+' transaksi</b></div>' +
+        '<div class="detail-row"><span>Rentang tanggal</span><b>'+esc(rentang)+'</b></div>' +
+        '<div class="detail-row"><span>Pemasukan</span><b>'+masuk.length+' · '+fmtMoney(totalM,cur)+'</b></div>' +
+        '<div class="detail-row"><span>Pengeluaran</span><b>'+keluar.length+' · '+fmtMoney(totalK,cur)+'</b></div>' +
+        (tolak.length?'<div class="lic-warn" style="margin-top:10px">'+tolak.length+' baris dilewati:<br>'+esc(tolak.slice(0,4).join(' · '))+(tolak.length>4?' …':'')+'</div>':'') +
+        (siap.length?'<button class="btn btn-primary btn-block" style="margin-top:12px" onclick="jalankanImpor()">✓ Impor '+siap.length+' Transaksi</button>':'') +
+      '</div>';
+  };
+  r.onerror = function(){ toast('Gagal membaca berkas.'); };
+  r.readAsText(f);
+  input.value = '';
+}
+function jalankanImpor(){
+  if(!_imporBaris.length) return;
+  if(!confirm('Impor '+_imporBaris.length+' transaksi ke pembukuan?')) return;
+  loading(true);
+  api('imporKas', { baris:_imporBaris }).then(function(r){
+    toast(r.masuk + ' transaksi diimpor ✓');
+    _imporBaris = [];
+    closeModal();
+    return reloadData(false);
+  }).catch(function(e){ loading(false); toast(e.message); });
+}
+
 /* ============================================================
    BUKU BESAR · PIUTANG · LAPORAN KEUANGAN
 ============================================================ */
 var kasSub = 'ringkasan';   // ringkasan | besar | piutang | laporan
-var lapPeriode = '';        // '' = semua, YYYY-MM
+var lapTahun = '';          // '' = sepanjang waktu
+var lapBulan = '';          // '' = seluruh tahun
+var lapBanding = true;      // tampilkan kolom periode sebelumnya
 
 function subNav(){
   var items = [['ringkasan','Ringkasan'],['besar','Buku Besar'],['piutang','Piutang'],['laporan','Laporan']];
@@ -3377,15 +3525,22 @@ function viewPiutang(){
 }
 
 /* ---------------- LAPORAN KEUANGAN ---------------- */
-function periodeKas(){
-  return (state.db.kas||[]).filter(function(k){
-    return !lapPeriode || String(k.tanggal||'').substring(0,7) === lapPeriode;
-  });
+/* Periode sebelumnya: bulan lalu, atau tahun lalu bila memilih setahun penuh */
+function periodeSebelum(th, bl){
+  if(!th) return null;
+  if(bl){
+    var m = Number(bl) - 1, y = Number(th);
+    if(m < 1){ m = 12; y -= 1; }
+    return { tahun:String(y), bulan:String(m).padStart(2,'0') };
+  }
+  return { tahun:String(Number(th)-1), bulan:'' };
 }
-function hitungLaporan(){
+function hitungLaporan(th, bl){
+  th = (th === undefined) ? lapTahun : th;
+  bl = (bl === undefined) ? lapBulan : bl;
   var cur = (state.db.settings||{}).defaultCurrency || 'IDR';
   var semua = state.db.kas || [];
-  var data = periodeKas();
+  var data = semua.filter(function(k){ return cocokPeriode(k, th, bl); });
 
   // Kategori yang dianggap penambah aset tetap, bukan beban
   var ASET = { 'Peralatan':1 };
@@ -3406,7 +3561,8 @@ function hitungLaporan(){
   var labaBersih = totalPendapatan - totalBeban;
 
   // Neraca — posisi sampai akhir periode (kumulatif, bukan hanya periode terpilih)
-  var sampai = lapPeriode ? function(k){ return String(k.tanggal||'').substring(0,7) <= lapPeriode; } : function(){ return true; };
+  var batas = th ? (bl ? (th+'-'+bl) : (th+'-12')) : '';
+  var sampai = batas ? function(k){ return String(k.tanggal||'').substring(0,7) <= batas; } : function(){ return true; };
   var kum = semua.filter(sampai);
   var saldoKas = kum.reduce(function(s,k){ return s + (k.jenis==='masuk'?k.jumlah:-k.jumlah); },0);
   var asetTetap = kum.filter(function(k){ return k.jenis==='keluar' && ASET[k.kategori]; })
@@ -3428,7 +3584,8 @@ function hitungLaporan(){
   // Arus kas
   var arusMasuk = data.filter(function(k){return k.jenis==='masuk';}).reduce(function(s,k){return s+k.jumlah;},0);
   var arusKeluar = data.filter(function(k){return k.jenis==='keluar';}).reduce(function(s,k){return s+k.jumlah;},0);
-  var sebelum = lapPeriode ? semua.filter(function(k){ return String(k.tanggal||'').substring(0,7) < lapPeriode; }) : [];
+  var awalPeriode = th ? (bl ? (th+'-'+bl) : (th+'-01')) : '';
+  var sebelum = awalPeriode ? semua.filter(function(k){ return String(k.tanggal||'').substring(0,7) < awalPeriode; }) : [];
   var saldoAwal = sebelum.reduce(function(s,k){ return s + (k.jenis==='masuk'?k.jumlah:-k.jumlah); },0);
 
   return { cur:cur, pendapatan:pendapatan, beban:beban, totalPendapatan:totalPendapatan, totalBeban:totalBeban,
@@ -3438,60 +3595,96 @@ function hitungLaporan(){
 }
 function viewLaporan(){
   var L = hitungLaporan(), cur = L.cur;
-  var bulanSet = {};
-  (state.db.kas||[]).forEach(function(k){ var b=String(k.tanggal||'').substring(0,7); if(b) bulanSet[b]=1; });
-  var opts = '<option value="">Sepanjang Waktu</option>' + Object.keys(bulanSet).sort().reverse().map(function(b){
-    return '<option value="'+b+'"'+(lapPeriode===b?' selected':'')+'>'+namaBulan(b)+'</option>';
-  }).join('');
-  var judulPeriode = lapPeriode ? namaBulan(lapPeriode) : 'Sepanjang Waktu';
+  var sblm = periodeSebelum(lapTahun, lapBulan);
+  var P = (lapBanding && sblm) ? hitungLaporan(sblm.tahun, sblm.bulan) : null;
 
-  var toolbar = '<div class="toolbar"><select onchange="lapPeriode=this.value;render()">'+opts+'</select>' +
+  var tahunOpts = '<option value="">Sepanjang Waktu</option>' + daftarTahun().map(function(t){
+    return '<option value="'+t+'"'+(lapTahun===t?' selected':'')+'>Tahun '+t+'</option>';
+  }).join('');
+  var bulanOpts = '<option value="">Seluruh Tahun</option>' + NAMA_BULAN.map(function(n,i){
+    var v = String(i+1).padStart(2,'0');
+    return '<option value="'+v+'"'+(lapBulan===v?' selected':'')+'>'+n+'</option>';
+  }).join('');
+  var judulPeriode = labelPeriode(lapTahun, lapBulan);
+  var judulBanding = sblm ? labelPeriode(sblm.tahun, sblm.bulan) : '';
+
+  var toolbar = '<div class="toolbar">' +
+    '<select onchange="lapTahun=this.value;render()">'+tahunOpts+'</select>' +
+    (lapTahun ? '<select onchange="lapBulan=this.value;render()">'+bulanOpts+'</select>' : '') +
+    (sblm ? '<label class="check-row" style="padding:0 6px"><input type="checkbox" '+(lapBanding?'checked':'')+' onchange="lapBanding=this.checked;render()"> Banding</label>' : '') +
     '<button class="btn btn-primary btn-sm" onclick="cetakLaporan()">🖨️ Cetak Laporan</button></div>';
 
-  var barisPendapatan = Object.keys(L.pendapatan).sort().map(function(k){
-    return '<tr><td>'+esc(k)+'</td><td class="tr num">'+fmtMoney(L.pendapatan[k],cur)+'</td></tr>';
-  }).join('') || '<tr><td colspan="2" class="kosong">Belum ada pendapatan</td></tr>';
-  var barisBeban = Object.keys(L.beban).sort(function(a,b){ return L.beban[b]-L.beban[a]; }).map(function(k){
-    return '<tr><td>'+esc(k)+'</td><td class="tr num">'+fmtMoney(L.beban[k],cur)+'</td></tr>';
-  }).join('') || '<tr><td colspan="2" class="kosong">Belum ada beban</td></tr>';
+  var hint = (!lapTahun) ? '<p class="mini" style="margin:-6px 2px 12px">Pilih tahun untuk melihat laporan per periode dan membandingkannya dengan tahun sebelumnya.</p>' : '';
+
+  // Kolom pembanding + selisih
+  var kolomBanding = P ? '<th class="tr">'+esc(judulBanding)+'</th><th class="tr">Selisih</th>' : '';
+  function selisih(a, b){
+    var d = a - b;
+    if(!b) return '<td class="tr num">'+(d?fmtMoney(d,cur):'—')+'</td>';
+    var pct = Math.round(d/Math.abs(b)*100);
+    var cls = d > 0 ? 'pos' : (d < 0 ? 'neg' : '');
+    return '<td class="tr num '+cls+'">'+(d>0?'+':'')+pct+'%</td>';
+  }
+  function baris(label, nilai, nilaiLalu, cls){
+    var t = '<tr class="'+(cls||'')+'"><td>'+label+'</td><td class="tr num">'+fmtMoney(nilai,cur)+'</td>';
+    if(P) t += '<td class="tr num" style="color:var(--muted)">'+fmtMoney(nilaiLalu||0,cur)+'</td>' + selisih(nilai, nilaiLalu||0);
+    return t + '</tr>';
+  }
+
+  var katPend = Object.keys(L.pendapatan).concat(P?Object.keys(P.pendapatan):[])
+    .filter(function(v,i,a){ return a.indexOf(v)===i; }).sort();
+  var katBeban = Object.keys(L.beban).concat(P?Object.keys(P.beban):[])
+    .filter(function(v,i,a){ return a.indexOf(v)===i; })
+    .sort(function(a,b){ return (L.beban[b]||0)-(L.beban[a]||0); });
+
+  var barisPend = katPend.map(function(k){ return baris(esc(k), L.pendapatan[k]||0, P?(P.pendapatan[k]||0):0); }).join('')
+    || '<tr><td colspan="'+(P?4:2)+'" class="kosong">Belum ada pendapatan</td></tr>';
+  var barisBeban = katBeban.map(function(k){ return baris(esc(k), L.beban[k]||0, P?(P.beban[k]||0):0); }).join('')
+    || '<tr><td colspan="'+(P?4:2)+'" class="kosong">Belum ada beban</td></tr>';
 
   var labaRugi = '<div class="card card-p lap-card"><div class="lap-judul">Laporan Laba Rugi</div>' +
-    '<div class="lap-sub">'+esc(judulPeriode)+'</div>' +
-    '<table class="lap-tbl"><tr class="grup"><th colspan="2">Pendapatan</th></tr>' + barisPendapatan +
-    '<tr class="jml"><td>Total Pendapatan</td><td class="tr num">'+fmtMoney(L.totalPendapatan,cur)+'</td></tr>' +
-    '<tr class="grup"><th colspan="2">Beban Usaha</th></tr>' + barisBeban +
-    '<tr class="jml"><td>Total Beban</td><td class="tr num">'+fmtMoney(L.totalBeban,cur)+'</td></tr>' +
-    '<tr class="hasil '+(L.labaBersih<0?'neg':'')+'"><td>'+(L.labaBersih<0?'Rugi Bersih':'Laba Bersih')+'</td>' +
-    '<td class="tr num">'+fmtMoney(L.labaBersih,cur)+'</td></tr></table></div>';
+    '<div class="lap-sub">'+esc(judulPeriode)+(P?(' · dibandingkan '+esc(judulBanding)):'')+'</div>' +
+    '<div class="tbl-scroll"><table class="lap-tbl">' +
+    '<tr><th></th><th class="tr">'+esc(judulPeriode)+'</th>'+kolomBanding+'</tr>' +
+    '<tr class="grup"><th colspan="'+(P?4:2)+'">Pendapatan</th></tr>' + barisPend +
+    baris('Total Pendapatan', L.totalPendapatan, P?P.totalPendapatan:0, 'jml') +
+    '<tr class="grup"><th colspan="'+(P?4:2)+'">Beban Usaha</th></tr>' + barisBeban +
+    baris('Total Beban', L.totalBeban, P?P.totalBeban:0, 'jml') +
+    baris((L.labaBersih<0?'Rugi Bersih':'Laba Bersih'), L.labaBersih, P?P.labaBersih:0, 'hasil'+(L.labaBersih<0?' neg':'')) +
+    '</table></div></div>';
 
   var neraca = '<div class="card card-p lap-card"><div class="lap-judul">Laporan Neraca</div>' +
-    '<div class="lap-sub">Posisi per '+(lapPeriode?('akhir '+namaBulan(lapPeriode)):'hari ini')+'</div>' +
-    '<table class="lap-tbl"><tr class="grup"><th colspan="2">Aset</th></tr>' +
-    '<tr><td>Kas &amp; Setara Kas</td><td class="tr num">'+fmtMoney(L.saldoKas,cur)+'</td></tr>' +
-    '<tr><td>Piutang Usaha</td><td class="tr num">'+fmtMoney(L.piutang,cur)+'</td></tr>' +
-    '<tr><td>Persediaan Barang</td><td class="tr num">'+fmtMoney(L.persediaan,cur)+'</td></tr>' +
-    '<tr><td>Peralatan</td><td class="tr num">'+fmtMoney(L.asetTetap,cur)+'</td></tr>' +
-    '<tr class="jml"><td>Total Aset</td><td class="tr num">'+fmtMoney(L.totalAset,cur)+'</td></tr>' +
-    '<tr class="grup"><th colspan="2">Kewajiban &amp; Ekuitas</th></tr>' +
-    '<tr><td>Kewajiban <span class="mini">(belum dicatat)</span></td><td class="tr num">'+fmtMoney(0,cur)+'</td></tr>' +
-    '<tr><td>Modal Disetor</td><td class="tr num">'+fmtMoney(L.modalKum,cur)+'</td></tr>' +
-    '<tr><td>Laba Ditahan &amp; Belum Terealisasi</td><td class="tr num">'+fmtMoney(L.totalAset-L.modalKum,cur)+'</td></tr>' +
-    '<tr class="jml"><td>Total Kewajiban &amp; Ekuitas</td><td class="tr num">'+fmtMoney(L.totalAset,cur)+'</td></tr></table></div>';
+    '<div class="lap-sub">Posisi per '+(lapTahun?('akhir '+esc(judulPeriode)):'hari ini')+'</div>' +
+    '<div class="tbl-scroll"><table class="lap-tbl">' +
+    '<tr class="grup"><th colspan="'+(P?4:2)+'">Aset</th></tr>' +
+    baris('Kas &amp; Setara Kas', L.saldoKas, P?P.saldoKas:0) +
+    baris('Piutang Usaha', L.piutang, P?P.piutang:0) +
+    baris('Persediaan Barang', L.persediaan, P?P.persediaan:0) +
+    baris('Peralatan', L.asetTetap, P?P.asetTetap:0) +
+    baris('Total Aset', L.totalAset, P?P.totalAset:0, 'jml') +
+    '<tr class="grup"><th colspan="'+(P?4:2)+'">Kewajiban &amp; Ekuitas</th></tr>' +
+    baris('Kewajiban <span class="mini">(belum dicatat)</span>', 0, 0) +
+    baris('Modal Disetor', L.modalKum, P?P.modalKum:0) +
+    baris('Laba Ditahan &amp; Belum Terealisasi', L.totalAset-L.modalKum, P?(P.totalAset-P.modalKum):0) +
+    baris('Total Kewajiban &amp; Ekuitas', L.totalAset, P?P.totalAset:0, 'jml') +
+    '</table></div></div>';
 
   var arus = '<div class="card card-p lap-card"><div class="lap-judul">Laporan Arus Kas</div>' +
     '<div class="lap-sub">'+esc(judulPeriode)+'</div>' +
-    '<table class="lap-tbl">' +
-    '<tr><td>Saldo Kas Awal</td><td class="tr num">'+fmtMoney(L.saldoAwal,cur)+'</td></tr>' +
-    '<tr><td>Kas Masuk</td><td class="tr num pos">+ '+fmtMoney(L.arusMasuk,cur)+'</td></tr>' +
-    '<tr><td>Kas Keluar</td><td class="tr num neg">− '+fmtMoney(L.arusKeluar,cur)+'</td></tr>' +
-    '<tr class="hasil"><td>Saldo Kas Akhir</td><td class="tr num">'+fmtMoney(L.saldoAkhir,cur)+'</td></tr></table>' +
+    '<div class="tbl-scroll"><table class="lap-tbl">' +
+    baris('Saldo Kas Awal', L.saldoAwal, P?P.saldoAwal:0) +
+    baris('Kas Masuk', L.arusMasuk, P?P.arusMasuk:0) +
+    baris('Kas Keluar', L.arusKeluar, P?P.arusKeluar:0) +
+    baris('Saldo Kas Akhir', L.saldoAkhir, P?P.saldoAkhir:0, 'hasil') +
+    '</table></div>' +
     '<div style="height:210px;margin-top:14px"><canvas id="lapChart"></canvas></div></div>';
 
   var catatan = '<div class="card card-p"><div class="section-title" style="margin-top:0">Catatan Penting</div>' +
-    '<p class="mini">Laporan ini disusun dengan <b>dasar kas</b>: pendapatan dan beban diakui saat uang benar-benar diterima atau dikeluarkan, bukan saat transaksi terjadi. Piutang dan persediaan dimunculkan di neraca sebagai informasi tambahan.</p>' +
-    '<p class="mini">Kewajiban (utang usaha, pinjaman) belum dicatat aplikasi, sehingga sisi Kewajiban &amp; Ekuitas disamakan dengan Total Aset. Untuk laporan keuangan resmi — misalnya untuk bank, investor, atau pelaporan pajak badan — serahkan data ini kepada akuntan Anda.</p></div>';
+    '<p class="mini">Laporan disusun dengan <b>dasar kas</b>: pendapatan dan beban diakui saat uang benar-benar diterima atau dikeluarkan. Piutang dan persediaan ditampilkan di neraca sebagai informasi tambahan.</p>' +
+    '<p class="mini">Kewajiban (utang usaha, pinjaman) belum dicatat aplikasi, sehingga sisi Kewajiban &amp; Ekuitas disamakan dengan Total Aset. Untuk laporan resmi kepada bank, investor, atau pelaporan pajak badan, mohon dikaji oleh akuntan.</p>' +
+    '<p class="mini">Data tahun-tahun sebelumnya bisa dimasukkan lewat <b>Ringkasan → ⭱ Impor Data Lama</b> agar perbandingan antar periode menjadi utuh.</p></div>';
 
-  return toolbar + labaRugi + neraca + arus + catatan;
+  return toolbar + hint + labaRugi + neraca + arus + catatan;
 }
 function afterLaporan(){
   var el = $('lapChart'); if(!el || typeof Chart === 'undefined') return;
@@ -3509,10 +3702,20 @@ function afterLaporan(){
 }
 function cetakLaporan(){
   var L = hitungLaporan(), cur = L.cur, s = state.db.settings||{};
-  var judulPeriode = lapPeriode ? namaBulan(lapPeriode) : 'Sepanjang Waktu';
-  var brs = function(a,b,cls){ return '<tr class="'+(cls||'')+'"><td>'+a+'</td><td class="tr">'+b+'</td></tr>'; };
-  var pend = Object.keys(L.pendapatan).sort().map(function(k){ return brs(esc(k), fmtMoney(L.pendapatan[k],cur)); }).join('');
-  var beb = Object.keys(L.beban).sort().map(function(k){ return brs(esc(k), fmtMoney(L.beban[k],cur)); }).join('');
+  var judulPeriode = labelPeriode(lapTahun, lapBulan);
+  var sblm = periodeSebelum(lapTahun, lapBulan);
+  var P = (lapBanding && sblm) ? hitungLaporan(sblm.tahun, sblm.bulan) : null;
+  var judulBanding = sblm ? labelPeriode(sblm.tahun, sblm.bulan) : '';
+  var kolom = P ? 3 : 2;
+  var brs = function(a,b,cls,c){
+    return '<tr class="'+(cls||'')+'"><td>'+a+'</td><td class="tr">'+b+'</td>' +
+      (P ? '<td class="tr" style="color:#667">'+(c===undefined?'':c)+'</td>' : '') + '</tr>';
+  };
+  var kepala = P ? '<tr class="g"><th></th><th style="text-align:right">'+esc(judulPeriode)+'</th><th style="text-align:right">'+esc(judulBanding)+'</th></tr>' : '';
+  var katP = Object.keys(L.pendapatan).concat(P?Object.keys(P.pendapatan):[]).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+  var katB = Object.keys(L.beban).concat(P?Object.keys(P.beban):[]).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+  var pend = katP.map(function(k){ return brs(esc(k), fmtMoney(L.pendapatan[k]||0,cur), '', P?fmtMoney(P.pendapatan[k]||0,cur):''); }).join('');
+  var beb = katB.map(function(k){ return brs(esc(k), fmtMoney(L.beban[k]||0,cur), '', P?fmtMoney(P.beban[k]||0,cur):''); }).join('');
   var html = '<div class="print-sheet lap-sheet">' +
     '<div class="dok-head"><div class="dok-brand">' +
       (s.logoUrl?'<img class="dok-logo" src="'+esc(s.logoUrl)+'" onerror="this.style.display=\'none\'">':'') +
@@ -3520,27 +3723,27 @@ function cetakLaporan(){
       '<div class="dok-co-sub">'+esc(s.companyAddress||'')+'</div></div></div>' +
       '<div class="dok-to"><div class="dok-place">Dicetak '+fmtDate(todayStr())+'</div></div></div>' +
     '<div class="dok-title"><h2>LAPORAN KEUANGAN</h2><div class="dok-no">'+esc(judulPeriode)+'</div></div>' +
-    '<h3 class="lap-h">Laba Rugi</h3><table class="lap-print"><tr class="g"><th colspan="2">Pendapatan</th></tr>'+pend+
-      brs('<b>Total Pendapatan</b>','<b>'+fmtMoney(L.totalPendapatan,cur)+'</b>','t') +
-      '<tr class="g"><th colspan="2">Beban Usaha</th></tr>'+beb+
-      brs('<b>Total Beban</b>','<b>'+fmtMoney(L.totalBeban,cur)+'</b>','t') +
-      brs('<b>'+(L.labaBersih<0?'Rugi Bersih':'Laba Bersih')+'</b>','<b>'+fmtMoney(L.labaBersih,cur)+'</b>','h') + '</table>' +
-    '<h3 class="lap-h">Neraca</h3><table class="lap-print"><tr class="g"><th colspan="2">Aset</th></tr>' +
-      brs('Kas &amp; Setara Kas', fmtMoney(L.saldoKas,cur)) +
-      brs('Piutang Usaha', fmtMoney(L.piutang,cur)) +
-      brs('Persediaan Barang', fmtMoney(L.persediaan,cur)) +
-      brs('Peralatan', fmtMoney(L.asetTetap,cur)) +
-      brs('<b>Total Aset</b>','<b>'+fmtMoney(L.totalAset,cur)+'</b>','t') +
-      '<tr class="g"><th colspan="2">Kewajiban &amp; Ekuitas</th></tr>' +
-      brs('Kewajiban', fmtMoney(0,cur)) +
-      brs('Modal Disetor', fmtMoney(L.modalKum,cur)) +
-      brs('Laba Ditahan', fmtMoney(L.totalAset-L.modalKum,cur)) +
-      brs('<b>Total Kewajiban &amp; Ekuitas</b>','<b>'+fmtMoney(L.totalAset,cur)+'</b>','t') + '</table>' +
-    '<h3 class="lap-h">Arus Kas</h3><table class="lap-print">' +
-      brs('Saldo Kas Awal', fmtMoney(L.saldoAwal,cur)) +
-      brs('Kas Masuk', '+ '+fmtMoney(L.arusMasuk,cur)) +
-      brs('Kas Keluar', '− '+fmtMoney(L.arusKeluar,cur)) +
-      brs('<b>Saldo Kas Akhir</b>','<b>'+fmtMoney(L.saldoAkhir,cur)+'</b>','h') + '</table>' +
+    '<h3 class="lap-h">Laba Rugi</h3><table class="lap-print">'+kepala+'<tr class="g"><th colspan="'+kolom+'">Pendapatan</th></tr>'+pend+
+      brs('<b>Total Pendapatan</b>','<b>'+fmtMoney(L.totalPendapatan,cur)+'</b>','t', P?fmtMoney(P.totalPendapatan,cur):'') +
+      '<tr class="g"><th colspan="'+kolom+'">Beban Usaha</th></tr>'+beb+
+      brs('<b>Total Beban</b>','<b>'+fmtMoney(L.totalBeban,cur)+'</b>','t', P?fmtMoney(P.totalBeban,cur):'') +
+      brs('<b>'+(L.labaBersih<0?'Rugi Bersih':'Laba Bersih')+'</b>','<b>'+fmtMoney(L.labaBersih,cur)+'</b>','h', P?fmtMoney(P.labaBersih,cur):'') + '</table>' +
+    '<h3 class="lap-h">Neraca</h3><table class="lap-print">'+kepala+'<tr class="g"><th colspan="'+kolom+'">Aset</th></tr>' +
+      brs('Kas &amp; Setara Kas', fmtMoney(L.saldoKas,cur), '', P?fmtMoney(P.saldoKas,cur):'') +
+      brs('Piutang Usaha', fmtMoney(L.piutang,cur), '', P?fmtMoney(P.piutang,cur):'') +
+      brs('Persediaan Barang', fmtMoney(L.persediaan,cur), '', P?fmtMoney(P.persediaan,cur):'') +
+      brs('Peralatan', fmtMoney(L.asetTetap,cur), '', P?fmtMoney(P.asetTetap,cur):'') +
+      brs('<b>Total Aset</b>','<b>'+fmtMoney(L.totalAset,cur)+'</b>','t', P?fmtMoney(P.totalAset,cur):'') +
+      '<tr class="g"><th colspan="'+kolom+'">Kewajiban &amp; Ekuitas</th></tr>' +
+      brs('Kewajiban', fmtMoney(0,cur), '', P?fmtMoney(0,cur):'') +
+      brs('Modal Disetor', fmtMoney(L.modalKum,cur), '', P?fmtMoney(P.modalKum,cur):'') +
+      brs('Laba Ditahan', fmtMoney(L.totalAset-L.modalKum,cur), '', P?fmtMoney(P.totalAset-P.modalKum,cur):'') +
+      brs('<b>Total Kewajiban &amp; Ekuitas</b>','<b>'+fmtMoney(L.totalAset,cur)+'</b>','t', P?fmtMoney(P.totalAset,cur):'') + '</table>' +
+    '<h3 class="lap-h">Arus Kas</h3><table class="lap-print">'+kepala +
+      brs('Saldo Kas Awal', fmtMoney(L.saldoAwal,cur), '', P?fmtMoney(P.saldoAwal,cur):'') +
+      brs('Kas Masuk', '+ '+fmtMoney(L.arusMasuk,cur), '', P?('+ '+fmtMoney(P.arusMasuk,cur)):'') +
+      brs('Kas Keluar', '− '+fmtMoney(L.arusKeluar,cur), '', P?('− '+fmtMoney(P.arusKeluar,cur)):'') +
+      brs('<b>Saldo Kas Akhir</b>','<b>'+fmtMoney(L.saldoAkhir,cur)+'</b>','h', P?fmtMoney(P.saldoAkhir,cur):'') + '</table>' +
     '<p class="lap-note">Disusun dengan dasar kas (cash basis). Kewajiban belum dicatat dalam aplikasi. ' +
       'Laporan ini untuk keperluan internal; untuk pelaporan resmi mohon dikaji oleh akuntan.</p>' +
   '</div>';
