@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0E8C6A"/>
+      <stop offset="1" stop-color="#0B7A5C"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Receipt / invoice (safe zone tengah) -->
+  <g transform="translate(166 118)">
+    <path d="M12 0h156a12 12 0 0 1 12 12v260l-24-16-24 16-24-16-24 16-24-16-24 16-24-16-24 16V12A12 12 0 0 1 12 0Z"
+          fill="#FFFFFF"/>
+    <!-- Baris teks -->
+    <rect x="30" y="44"  width="120" height="14" rx="7" fill="#0B7A5C"/>
+    <rect x="30" y="80"  width="84"  height="12" rx="6" fill="#CDE7DE"/>
+    <rect x="30" y="112" width="120" height="12" rx="6" fill="#CDE7DE"/>
+    <rect x="30" y="144" width="96"  height="12" rx="6" fill="#CDE7DE"/>
+    <!-- Simbol Rupiah -->
+    <text x="90" y="230" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700"
+          fill="#0B7A5C" text-anchor="middle">Rp</text>
+  </g>
+</svg>

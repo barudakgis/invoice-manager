@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bersihkan Cache Aplikasi</title>
+<meta http-equiv="Cache-Control" content="no-store">
+<style>
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#F4F6F4;color:#16241E;
+  margin:0;padding:24px;line-height:1.65;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.box{background:#fff;border:1px solid #E2E8E4;border-radius:18px;padding:26px;max-width:460px;width:100%}
+h1{font-size:19px;margin:0 0 6px}
+p{font-size:14px;color:#4a5852;margin:0 0 14px}
+#log{background:#F4F6F4;border-radius:12px;padding:12px;font-size:13px;font-family:ui-monospace,Menlo,Consolas,monospace;
+  white-space:pre-wrap;margin:14px 0;min-height:70px}
+.btn{display:block;width:100%;padding:13px;border:none;border-radius:12px;background:#0B7A5C;color:#fff;
+  font-size:15px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;box-sizing:border-box}
+.btn.ghost{background:#E7F3EE;color:#075C45;margin-top:10px}
+.ok{color:#0B7A5C;font-weight:700}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Bersihkan Cache Aplikasi</h1>
+  <p>Halaman ini menghapus service worker dan cache lama yang membuat aplikasi masih menampilkan versi terdahulu. Data Anda di Google Sheets <b>tidak tersentuh sama sekali</b> — yang dihapus hanya salinan tampilan di perangkat ini.</p>
+  <div id="log">Menunggu…</div>
+  <button class="btn" onclick="bersihkan()">Bersihkan Sekarang</button>
+  <a class="btn ghost" href="index.html">Kembali ke Aplikasi</a>
+</div>
+
+<script>
+var logEl = document.getElementById('log');
+function tulis(t){ logEl.textContent += (logEl.textContent ? '\n' : '') + t; }
+async function bersihkan(){
+  logEl.textContent = '';
+  try {
+    if ('serviceWorker' in navigator) {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      tulis('Service worker ditemukan: ' + regs.length);
+      for (var i = 0; i < regs.length; i++) {
+        await regs[i].unregister();
+        tulis('  ✓ dihapus (' + (i + 1) + ')');
+      }
+    } else {
+      tulis('Peramban tidak memakai service worker.');
+    }
+    if (window.caches) {
+      var keys = await caches.keys();
+      tulis('Cache ditemukan: ' + keys.length);
+      for (var j = 0; j < keys.length; j++) {
+        await caches.delete(keys[j]);
+        tulis('  ✓ ' + keys[j] + ' dihapus');
+      }
+    }
+    tulis('\nSelesai. Membuka aplikasi versi terbaru…');
+    logEl.insertAdjacentHTML('beforeend', '<span class="ok"></span>');
+    setTimeout(function(){
+      // tambahkan penanda waktu agar peramban benar-benar mengambil berkas baru
+      location.replace('index.html?segar=' + Date.now());
+    }, 1400);
+  } catch (e) {
+    tulis('Gagal: ' + e.message + '\nCoba hapus data situs lewat setelan peramban.');
+  }
+}
+</script>
+</body>
+</html>
