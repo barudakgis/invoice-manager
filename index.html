@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Universal Invoice Manager</title>
 <meta name="theme-color" content="#0B7A5C">
-<meta name="description" content="Aplikasi manajemen invoice: dashboard, invoice, klien, nota, surat jalan, faktur, dan berita acara.">
+<meta name="description" content="Aplikasi manajemen invoice, dokumen dagang, dan pembukuan sederhana.">
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -438,7 +438,7 @@ table.dt tr:last-child td{border-bottom:none}
     <div class="login-mono" id="loginMono">IM</div>
     <h1 id="loginTitle">Universal Invoice Manager</h1>
     <p class="sub">Masuk untuk mengelola invoice bisnis Anda</p>
-    <div class="ver-badge">versi 2.1.0</div>
+    <div class="ver-badge">versi 2.2.0</div>
     <div class="login-err" id="loginErr"></div>
     <div class="field">
       <label>Username</label>
@@ -665,7 +665,7 @@ function pasangTombolBersih(root){
 }
 
 /* ---- Versi & Lisensi ---- */
-var APP_VERSION = '2.1.0';
+var APP_VERSION = '2.2.0';
 function lic(){ return (state.db && state.db.license) || { mode:'trial', valid:true, daysLeft:null }; }
 function isViewer(){ return lic().valid === false; }
 // Blokir aksi tulis saat Mode Viewer, dengan pesan yang jelas
@@ -992,9 +992,65 @@ function forceLogout(){
   $('loginView').classList.remove('hidden');
   loading(false);
 }
+/* ============================================================
+   TOMBOL BACK PONSEL
+   Tanpa ini, menekan Back di Android langsung menutup aplikasi.
+   Urutan mundur: lightbox → modal → sub-tab → tab sebelumnya →
+   dasbor → konfirmasi keluar (tekan dua kali).
+============================================================ */
+var _backAktif = false, _keluarSiap = false, _sedangKeluar = false;
+function pasangTombolBack(){
+  if(_backAktif) return;
+  _backAktif = true;
+  // Sediakan satu entri cadangan yang akan "dimakan" tiap kali Back ditekan
+  try { history.replaceState({ uim:'akar' }, ''); history.pushState({ uim:'app' }, ''); } catch(e){ _backAktif = false; return; }
+  window.addEventListener('popstate', function(){ tanganiBack(); });
+}
+function dorongCadangan(){ try { history.pushState({ uim:'app' }, ''); } catch(e){} }
+
+function tanganiBack(){
+  if(_sedangKeluar) return;   // biarkan peramban benar-benar keluar
+
+  // 1. Gambar diperbesar
+  if(document.getElementById('lightbox')){ closeZoom(); dorongCadangan(); return; }
+
+  // 2. Modal terbuka
+  var host = $('modalHost');
+  if(host && host.innerHTML.trim()){
+    var bg = host.firstChild;
+    if(bg && bg.dataset && bg.dataset.form === '1'){
+      if(!confirm('Tutup formulir ini? Perubahan yang belum disimpan akan hilang.')){ dorongCadangan(); return; }
+    }
+    closeModal(); dorongCadangan(); return;
+  }
+
+  // 3. Sub-halaman pembukuan → kembali ke Ringkasan
+  if(state.tab === 'kas' && typeof kasSub !== 'undefined' && kasSub !== 'ringkasan'){
+    kasSub = 'ringkasan'; render(); dorongCadangan(); return;
+  }
+
+  // 4. Belum login → tidak ke mana-mana
+  if(!state.token){ dorongCadangan(); return; }
+
+  // 5. Tab sebelumnya
+  if(_riwayatTab.length){ goLangsung(_riwayatTab.pop()); dorongCadangan(); return; }
+
+  // 6. Bukan di dasbor → pulang ke dasbor
+  if(state.tab !== 'dashboard'){ goLangsung('dashboard'); dorongCadangan(); return; }
+
+  // 7. Di dasbor → tekan sekali lagi untuk keluar
+  if(_keluarSiap){ _sedangKeluar = true; try { history.back(); } catch(e){} return; }
+  _keluarSiap = true;
+  toast('Tekan sekali lagi untuk keluar');
+  setTimeout(function(){ _keluarSiap = false; }, 2000);
+  dorongCadangan();
+}
+
 function enterApp(){
   $('loginView').classList.add('hidden');
   $('appView').classList.remove('hidden');
+  pasangTombolBack();
+  _riwayatTab = [];
   refreshAvatars();
   buildSidebar();
   segarkanFab();
@@ -1112,7 +1168,16 @@ function buildSidebar(){
   $('sbNav').innerHTML = html;
 }
 
+/* Riwayat tab untuk tombol Back ponsel */
+var _riwayatTab = [];
 function go(tab){
+  if(state.tab && state.tab !== tab){
+    _riwayatTab.push(state.tab);
+    if(_riwayatTab.length > 25) _riwayatTab.shift();
+  }
+  goLangsung(tab);
+}
+function goLangsung(tab){   // pindah tab TANPA menambah riwayat (dipakai tombol Back)
   state.tab = tab;
   if(tab==='settings'){ _logoData = null; _appLogoData = null; _stampData = null; _signatureData = null; }
   $('pageTitle').textContent = TITLES[tab] || 'Dasbor';
@@ -4552,3 +4617,4 @@ function muatUlangPembaruan(){
 </script>
 </body>
 </html>
+
