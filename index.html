@@ -420,13 +420,24 @@ table.dt tr:last-child td{border-bottom:none}
 .print-sheet .sign-job{font-size:11.5px;color:#556}
 
 @media print{
-  body *{visibility:hidden}
-  #printArea,#printArea *{visibility:visible}
-  #printArea{position:absolute;left:0;top:0;width:100%}
-  #printArea,#printArea *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #printArea img{display:inline-block!important}
-  .ba-sign .ba-cap,.print-sheet .sign-cap,.dok-sign .dok-cap{mix-blend-mode:multiply;opacity:.85}
-  .print-sheet{border:none;padding:10mm}
+  /* Sembunyikan SELURUH antarmuka; hanya area cetak yang boleh tampil.
+     Sebelumnya memakai visibility:hidden — Safari di iPhone tetap melukis
+     tombol mengambang beserta bayangannya sehingga muncul bulatan hijau
+     di hasil PDF (di Android tersisa samar). display:none menghapusnya
+     sepenuhnya dari proses cetak. */
+  body > *:not(#printArea){ display:none !important; }
+  .bottomnav,.sidebar,.topbar,.bn-fab,.loader,.toast,.lic-bar,.app-ver,
+  .modal-bg,#modalHost,#lightbox,#updBar,.noprint{ display:none !important; }
+
+  #printArea{ position:static; left:auto; top:auto; width:100%;
+    margin:0; padding:0; background:#fff; box-shadow:none }
+  #printArea,#printArea *{ -webkit-print-color-adjust:exact; print-color-adjust:exact }
+  #printArea img{ display:inline-block !important }
+  .ba-sign .ba-cap,.print-sheet .sign-cap,.dok-sign .dok-cap{ mix-blend-mode:multiply;opacity:.85 }
+  .print-sheet{ border:none;padding:10mm;box-shadow:none }
+  /* Panggung pratinjau tidak boleh membawa skala zoom ke hasil cetak */
+  .pv-wrap,.pv-stage{ overflow:visible !important; max-height:none !important;
+    background:none !important; padding:0 !important; zoom:1 !important; transform:none !important }
 }
 </style>
 </head>
@@ -438,7 +449,7 @@ table.dt tr:last-child td{border-bottom:none}
     <div class="login-mono" id="loginMono">IM</div>
     <h1 id="loginTitle">Universal Invoice Manager</h1>
     <p class="sub">Masuk untuk mengelola invoice bisnis Anda</p>
-    <div class="ver-badge">versi 2.2.0</div>
+    <div class="ver-badge">versi 2.2.1</div>
     <div class="login-err" id="loginErr"></div>
     <div class="field">
       <label>Username</label>
@@ -665,7 +676,7 @@ function pasangTombolBersih(root){
 }
 
 /* ---- Versi & Lisensi ---- */
-var APP_VERSION = '2.2.0';
+var APP_VERSION = '2.2.1';
 function lic(){ return (state.db && state.db.license) || { mode:'trial', valid:true, daysLeft:null }; }
 function isViewer(){ return lic().valid === false; }
 // Blokir aksi tulis saat Mode Viewer, dengan pesan yang jelas
@@ -916,7 +927,7 @@ function closeZoom(){ window.removeEventListener('mousemove', _zoomMouseMove); v
    - Di dalam GAS Web App: pakai google.script.run
    - Di GitHub Pages (statis): pakai fetch ke GAS_URL (config.js)
 ============================================================ */
-var GAS_URL = (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || '';
+var GAS_URL = (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || 'https://script.google.com/macros/s/AKfycbwRhmggm3bX05CCkTSU2QKVhT1RANpkFdJG3Hfxs21Vl2O9RHwJIJjUUfchXFnEHEOBEQ/exec';
 var IS_GAS = (typeof google !== 'undefined' && google.script && google.script.run);
 
 function callServer(fnName, args){
@@ -1940,7 +1951,18 @@ function waitImagesThenPrint(after){
   var pa = $('printArea');
   var imgs = Array.prototype.slice.call(pa.querySelectorAll('img'));
   var printed = false;
-  function fire(){ if(printed) return; printed = true; try{ window.print(); } finally { if(after) setTimeout(after, 500); } }
+  function selesai(){
+    if(!after) return;
+    // Safari iOS merender halaman cetak lebih lambat; sembunyikan area cetak
+    // setelah dialog benar-benar selesai, bukan setelah jeda tetap.
+    var sudah = false;
+    var jalan = function(){ if(sudah) return; sudah = true;
+      try { window.removeEventListener('afterprint', jalan); } catch(e){}
+      after(); };
+    try { window.addEventListener('afterprint', jalan); } catch(e){}
+    setTimeout(jalan, 2500);
+  }
+  function fire(){ if(printed) return; printed = true; try{ window.print(); } finally { selesai(); } }
   if(!imgs.length){ setTimeout(fire, 60); return; }
   var proms = imgs.map(function(im){
     try { if(im.decode) return im.decode().catch(function(){}); } catch(e){}
@@ -4617,4 +4639,5 @@ function muatUlangPembaruan(){
 </script>
 </body>
 </html>
+
 

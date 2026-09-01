@@ -1,7 +1,7 @@
 /* Service Worker — Universal Invoice Manager PWA
    Meng-cache "app shell" agar bisa diinstal & tampil offline.
    Data (invoice, klien, dsb.) tetap butuh koneksi ke server GAS. */
-var CACHE = 'uim-shell-v23';
+var CACHE = 'uim-shell-v24';
 var SHELL = [
   './',
   './index.html',
