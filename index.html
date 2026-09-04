@@ -437,8 +437,23 @@ table.dt tr:last-child td{border-bottom:none}
   #printArea,#printArea *{ -webkit-print-color-adjust:exact; print-color-adjust:exact }
   #printArea img{ display:inline-block !important }
   .ba-sign .ba-cap,.print-sheet .sign-cap,.dok-sign .dok-cap{ mix-blend-mode:multiply;opacity:.85 }
-  @page{ size:A4 portrait; margin:12mm }
-  .print-sheet{ border:none;padding:0;box-shadow:none;width:auto;max-width:none }
+  @page{ size:A4 portrait; margin:8mm }
+  /* html,body memakai height:100% untuk tata letak layar. Saat mencetak, tinggi
+     itu tetap dipertahankan sehingga menyisakan satu halaman kosong di akhir.
+     Kembalikan ke tinggi mengikuti isi. */
+  html,body{ height:auto !important; min-height:0 !important; max-height:none !important;
+    margin:0 !important; padding:0 !important; overflow:visible !important; background:#fff !important }
+  #printArea{ break-after:avoid; page-break-after:avoid }
+  #printArea > :last-child, .print-sheet > :last-child{ margin-bottom:0 !important; padding-bottom:0 !important }
+  .print-sheet{ break-after:auto; page-break-after:auto }
+  /* Padding lembar WAJIB dipertahankan: band judul invoice memakai margin
+     negatif -34px agar melebar sampai tepi lembar. Bila padding dihilangkan,
+     band justru meluber keluar kertas sehingga logo dan teks tampak terpotong. */
+  .print-sheet{ border:none;padding:34px !important;box-shadow:none;width:auto;max-width:none;
+    margin:0 !important;background:#fff }
+  /* Bilah gulir jangan ikut tercetak */
+  .print-sheet,.tbl-scroll,.pv-wrap,#printArea,#printArea *{ overflow:visible !important }
+  .print-sheet table,.lap-print,.dok-items,.ba-items{ table-layout:auto;width:100% }
   /* Jangan biarkan blok tanda tangan, total, atau baris tabel terbelah ke halaman berikutnya */
   .ba-sign,.dok-sign,.sign-wrap,.ba-sign .ba-col,.dok-sign .dok-col,.sign-block,
   .dok-tot,.dok-jumlah,.dok-note,.totals,.lap-card{ break-inside:avoid; page-break-inside:avoid }
@@ -459,7 +474,7 @@ table.dt tr:last-child td{border-bottom:none}
     <div class="login-mono" id="loginMono">IM</div>
     <h1 id="loginTitle">Universal Invoice Manager</h1>
     <p class="sub">Masuk untuk mengelola invoice bisnis Anda</p>
-    <div class="ver-badge">versi 2.3.0</div>
+    <div class="ver-badge">versi 2.3.2</div>
     <div class="login-err" id="loginErr"></div>
     <div class="field">
       <label>Username</label>
@@ -688,7 +703,7 @@ function pasangTombolBersih(root){
 }
 
 /* ---- Versi & Lisensi ---- */
-var APP_VERSION = '2.3.0';
+var APP_VERSION = '2.3.2';
 function lic(){ return (state.db && state.db.license) || { mode:'trial', valid:true, daysLeft:null }; }
 function isViewer(){ return lic().valid === false; }
 // Blokir aksi tulis saat Mode Viewer, dengan pesan yang jelas
@@ -1963,7 +1978,11 @@ function doPrint(){
    Ukuran area cetak A4 potret dengan margin 12mm, pada 96 dpi:
    lebar (210-24)mm ≈ 703px, tinggi (297-24)mm ≈ 1032px. */
 var fitSatuHalaman = true;
-var CETAK_LEBAR = 703, CETAK_TINGGI = 1032;
+/* A4 potret dengan margin halaman 8mm → area cetak 194 x 281 mm
+   ≈ 733 x 1062 px pada 96 dpi. Diberi toleransi ~1% karena pembulatan piksel
+   antar peramban kerap membuat isi meluber sepersekian piksel dan
+   memunculkan halaman kedua yang kosong. */
+var CETAK_LEBAR = 726, CETAK_TINGGI = 1050;
 function hitungSkalaFit(tinggiIsi, lebarIsi, tinggiHal, lebarHal){
   tinggiHal = tinggiHal || CETAK_TINGGI; lebarHal = lebarHal || CETAK_LEBAR;
   if(!tinggiIsi || !lebarIsi) return 1;
@@ -4683,6 +4702,8 @@ function muatUlangPembaruan(){
 </script>
 </body>
 </html>
+
+
 
 
 
