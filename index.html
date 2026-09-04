@@ -342,6 +342,9 @@ table.dt tr:last-child td{border-bottom:none}
 .pv-bar .zbtn:active{background:var(--accent-soft)}
 .pv-level{font-size:12.5px;font-weight:700;color:var(--muted);min-width:52px;text-align:center}
 .pv-hint{font-size:11px;color:var(--muted)}
+.fit-row{display:flex;gap:9px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--accent);
+  border-radius:11px;padding:10px 12px;margin:10px 0 0;font-size:12px;color:var(--accent-deep);cursor:pointer}
+.fit-row input{margin-top:2px;width:17px;height:17px;flex:none;accent-color:var(--accent)}
 .ver-badge{display:inline-block;background:var(--accent-soft);color:var(--accent-deep);font-size:11px;font-weight:800;
   letter-spacing:.04em;border-radius:999px;padding:3px 10px;margin:-6px auto 14px}
 .app-ver{font-size:11px;color:var(--muted);text-align:center;padding:10px 0 4px}
@@ -434,7 +437,14 @@ table.dt tr:last-child td{border-bottom:none}
   #printArea,#printArea *{ -webkit-print-color-adjust:exact; print-color-adjust:exact }
   #printArea img{ display:inline-block !important }
   .ba-sign .ba-cap,.print-sheet .sign-cap,.dok-sign .dok-cap{ mix-blend-mode:multiply;opacity:.85 }
-  .print-sheet{ border:none;padding:10mm;box-shadow:none }
+  @page{ size:A4 portrait; margin:12mm }
+  .print-sheet{ border:none;padding:0;box-shadow:none;width:auto;max-width:none }
+  /* Jangan biarkan blok tanda tangan, total, atau baris tabel terbelah ke halaman berikutnya */
+  .ba-sign,.dok-sign,.sign-wrap,.ba-sign .ba-col,.dok-sign .dok-col,.sign-block,
+  .dok-tot,.dok-jumlah,.dok-note,.totals,.lap-card{ break-inside:avoid; page-break-inside:avoid }
+  table tr,.lap-print tr,.dok-items tr,.ba-items tr{ break-inside:avoid; page-break-inside:avoid }
+  thead{ display:table-header-group }
+  h2,h3,.lap-h,.dok-title,.ba-title{ break-after:avoid; page-break-after:avoid }
   /* Panggung pratinjau tidak boleh membawa skala zoom ke hasil cetak */
   .pv-wrap,.pv-stage{ overflow:visible !important; max-height:none !important;
     background:none !important; padding:0 !important; zoom:1 !important; transform:none !important }
@@ -449,7 +459,7 @@ table.dt tr:last-child td{border-bottom:none}
     <div class="login-mono" id="loginMono">IM</div>
     <h1 id="loginTitle">Universal Invoice Manager</h1>
     <p class="sub">Masuk untuk mengelola invoice bisnis Anda</p>
-    <div class="ver-badge">versi 2.2.1</div>
+    <div class="ver-badge">versi 2.3.0</div>
     <div class="login-err" id="loginErr"></div>
     <div class="field">
       <label>Username</label>
@@ -569,7 +579,9 @@ function loading(on){ $('loader').classList.toggle('hidden', !on); }
 var _pvZoom = 1, _pvPinch = 0;
 var _pvZoomPakaiZoom = (function(){ try { return 'zoom' in document.documentElement.style; } catch(e){ return false; } })();
 function pvBar(extra){
-  return '<div class="pv-bar">' + (extra||'') +
+  return '<label class="fit-row"><input type="checkbox" '+(fitSatuHalaman?'checked':'')+' onchange="fitSatuHalaman=this.checked">' +
+      '<span><b>Muat 1 halaman</b> — perkecil otomatis bila isi sedikit melebihi satu lembar, supaya tanda tangan tidak terpotong.</span></label>' +
+    '<div class="pv-bar">' + (extra||'') +
     '<button class="zbtn" onclick="pvZoom(-0.15)" title="Perkecil">−</button>' +
     '<div class="pv-level" id="pvLevel">100%</div>' +
     '<button class="zbtn" onclick="pvZoom(0.15)" title="Perbesar">+</button>' +
@@ -676,7 +688,7 @@ function pasangTombolBersih(root){
 }
 
 /* ---- Versi & Lisensi ---- */
-var APP_VERSION = '2.2.1';
+var APP_VERSION = '2.3.0';
 function lic(){ return (state.db && state.db.license) || { mode:'trial', valid:true, daysLeft:null }; }
 function isViewer(){ return lic().valid === false; }
 // Blokir aksi tulis saat Mode Viewer, dengan pesan yang jelas
@@ -927,7 +939,7 @@ function closeZoom(){ window.removeEventListener('mousemove', _zoomMouseMove); v
    - Di dalam GAS Web App: pakai google.script.run
    - Di GitHub Pages (statis): pakai fetch ke GAS_URL (config.js)
 ============================================================ */
-var GAS_URL = (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || 'https://script.google.com/macros/s/AKfycbwRhmggm3bX05CCkTSU2QKVhT1RANpkFdJG3Hfxs21Vl2O9RHwJIJjUUfchXFnEHEOBEQ/exec';
+var GAS_URL = (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || '';
 var IS_GAS = (typeof google !== 'undefined' && google.script && google.script.run);
 
 function callServer(fnName, args){
@@ -1947,6 +1959,34 @@ function doPrint(){
   waitImagesThenPrint(function(){ $('printArea').classList.add('hidden'); });
 }
 // Tunggu semua gambar (data URL tanda tangan/cap/logo) selesai di-decode sebelum cetak
+/* ---- Muat satu halaman ----
+   Ukuran area cetak A4 potret dengan margin 12mm, pada 96 dpi:
+   lebar (210-24)mm ≈ 703px, tinggi (297-24)mm ≈ 1032px. */
+var fitSatuHalaman = true;
+var CETAK_LEBAR = 703, CETAK_TINGGI = 1032;
+function hitungSkalaFit(tinggiIsi, lebarIsi, tinggiHal, lebarHal){
+  tinggiHal = tinggiHal || CETAK_TINGGI; lebarHal = lebarHal || CETAK_LEBAR;
+  if(!tinggiIsi || !lebarIsi) return 1;
+  var k = Math.min(1, tinggiHal/tinggiIsi, lebarHal/lebarIsi);
+  if(k >= 0.995) return 1;                    // sudah muat, jangan diutak-atik
+  return Math.max(0.45, Math.floor(k*100)/100); // batas bawah agar tetap terbaca
+}
+/* Ukur isi pada lebar kertas sungguhan lalu perkecil bila melebihi satu halaman */
+function siapkanFitCetak(){
+  var pa = $('printArea'); if(!pa) return;
+  var lembar = pa.querySelector ? pa.querySelector('.print-sheet') : null;
+  if(!lembar) return;
+  lembar.style.zoom = '';
+  lembar.style.width = ''; lembar.style.maxWidth = '';
+  if(!fitSatuHalaman) return;
+  // Paksa lebar kertas agar pengukuran sesuai hasil cetak, bukan lebar layar
+  lembar.style.width = CETAK_LEBAR + 'px';
+  lembar.style.maxWidth = CETAK_LEBAR + 'px';
+  var k = hitungSkalaFit(lembar.scrollHeight, lembar.scrollWidth);
+  lembar.style.width = ''; lembar.style.maxWidth = '';
+  if(k < 1) lembar.style.zoom = k;
+}
+
 function waitImagesThenPrint(after){
   var pa = $('printArea');
   var imgs = Array.prototype.slice.call(pa.querySelectorAll('img'));
@@ -1962,7 +2002,11 @@ function waitImagesThenPrint(after){
     try { window.addEventListener('afterprint', jalan); } catch(e){}
     setTimeout(jalan, 2500);
   }
-  function fire(){ if(printed) return; printed = true; try{ window.print(); } finally { selesai(); } }
+  function fire(){
+    if(printed) return; printed = true;
+    try { siapkanFitCetak(); } catch(e){}
+    try{ window.print(); } finally { selesai(); }
+  }
   if(!imgs.length){ setTimeout(fire, 60); return; }
   var proms = imgs.map(function(im){
     try { if(im.decode) return im.decode().catch(function(){}); } catch(e){}
@@ -4639,5 +4683,6 @@ function muatUlangPembaruan(){
 </script>
 </body>
 </html>
+
 
 
