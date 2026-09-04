@@ -939,7 +939,7 @@ function closeZoom(){ window.removeEventListener('mousemove', _zoomMouseMove); v
    - Di dalam GAS Web App: pakai google.script.run
    - Di GitHub Pages (statis): pakai fetch ke GAS_URL (config.js)
 ============================================================ */
-var GAS_URL = (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || '';
+var GAS_URL = (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || 'https://script.google.com/macros/s/AKfycbwRhmggm3bX05CCkTSU2QKVhT1RANpkFdJG3Hfxs21Vl2O9RHwJIJjUUfchXFnEHEOBEQ/exec';
 var IS_GAS = (typeof google !== 'undefined' && google.script && google.script.run);
 
 function callServer(fnName, args){
