@@ -412,6 +412,28 @@ table.dt tr:last-child td{border-bottom:none}
 .dok-sign .dok-cap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-12deg);max-height:110px;max-width:160px;object-fit:contain;opacity:.85;mix-blend-mode:multiply;z-index:1;pointer-events:none}
 .dok-sign .dok-nama{font-weight:800;border-top:1px solid #334;display:inline-block;padding-top:4px;min-width:170px}
 .dok-sign .dok-job{font-size:11.5px;color:#556}
+/* Ruang e-Meterai — kotak kosong yang disediakan agar QR meterai
+   tidak menimpa tanda tangan saat dibubuhkan di portal distributor. */
+.materai-box{width:26mm;height:26mm;border:1.4px dashed #9aa8a3;border-radius:5px;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:3px;
+  color:#8a968f;background:repeating-linear-gradient(45deg,#fbfcfb,#fbfcfb 6px,#f4f7f5 6px,#f4f7f5 12px)}
+.materai-box.terisi{border-style:solid;border-color:var(--accent);color:var(--accent-deep);background:var(--accent-soft)}
+.materai-box .mt-l{font-size:8.5px;font-weight:800;line-height:1.25;letter-spacing:.03em}
+.materai-box .mt-s{font-size:7px;margin-top:3px;line-height:1.2;word-break:break-all}
+.materai-box .mt-t{font-size:7px;margin-top:2px}
+.mt-col{flex:none !important;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px}
+/* Kuitansi */
+.kw-sheet .kw-body{margin:18px 0 6px}
+.kw-sheet .kw-row{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px dotted #b9c4bf}
+.kw-sheet .kw-l{width:150px;flex:none;color:#556;font-size:12.5px}
+.kw-sheet .kw-v{flex:1;font-size:13.5px;font-weight:600}
+.kw-sheet .kw-terbilang{font-style:italic;font-weight:700;color:var(--accent-deep)}
+.kw-sheet .kw-bawah{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:26px;flex-wrap:wrap}
+.kw-sheet .kw-jml{display:flex;align-items:baseline;gap:10px;background:var(--accent-soft);
+  border:1.5px solid var(--accent);border-radius:10px;padding:12px 18px}
+.kw-sheet .kw-jml span{font-size:14px;color:var(--accent-deep);font-weight:700}
+.kw-sheet .kw-jml b{font-size:22px;color:var(--accent-deep);letter-spacing:-.5px}
+.kw-sheet .kw-ttd-in{display:flex;gap:14px;align-items:flex-end}
 /* Tanda tangan penerbit di invoice */
 .print-sheet .sign-wrap{display:flex;justify-content:flex-end;margin-top:26px}
 .print-sheet .sign-block{text-align:center;min-width:230px}
@@ -474,7 +496,7 @@ table.dt tr:last-child td{border-bottom:none}
     <div class="login-mono" id="loginMono">IM</div>
     <h1 id="loginTitle">Universal Invoice Manager</h1>
     <p class="sub">Masuk untuk mengelola invoice bisnis Anda</p>
-    <div class="ver-badge">versi 2.3.2</div>
+    <div class="ver-badge">versi 2.4.0</div>
     <div class="login-err" id="loginErr"></div>
     <div class="field">
       <label>Username</label>
@@ -703,7 +725,7 @@ function pasangTombolBersih(root){
 }
 
 /* ---- Versi & Lisensi ---- */
-var APP_VERSION = '2.3.2';
+var APP_VERSION = '2.4.0';
 function lic(){ return (state.db && state.db.license) || { mode:'trial', valid:true, daysLeft:null }; }
 function isViewer(){ return lic().valid === false; }
 // Blokir aksi tulis saat Mode Viewer, dengan pesan yang jelas
@@ -1157,6 +1179,7 @@ var NAV = [
   { id:'berita', label:'Berita Acara', icon:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 15l2 2 4-4"/>' },
   { id:'kas', label:'Pembukuan', icon:'<path d="M3 6h18v14a1 1 0 01-1 1H4a1 1 0 01-1-1zM3 6l2-3h14l2 3M8 11h8M8 15h5"/>' },
   { id:'stok', label:'Stok', icon:'<path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v10"/>' },
+  { id:'kuitansi', label:'Kuitansi', icon:'<path d="M4 3h16v18l-2.7-1.8L14.6 21l-2.6-1.8L9.4 21l-2.7-1.8L4 21zM8 9h8M8 13h5"/>' },
   { id:'nota', label:'Nota', icon:'<path d="M5 3v18l3-2 2 2 2-2 2 2 2-2 3 2V3zM8 8h8M8 12h8M8 16h5"/>' },
   { id:'suratjalan', label:'Surat Jalan', icon:'<path d="M1 3h13v13H1zM14 8h4l3 3v5h-7zM6.5 19a2 2 0 100-4 2 2 0 000 4zM17.5 19a2 2 0 100-4 2 2 0 000 4z"/>' },
   { id:'faktur', label:'Faktur', icon:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M8 13h8M8 17h5"/>' },
@@ -1175,6 +1198,7 @@ var FAB_AKSI = {
   nota:        { label:'Nota Baru',         jalan:function(){ openDokEditor('nota'); } },
   suratjalan:  { label:'Surat Jalan Baru',  jalan:function(){ openDokEditor('surat-jalan'); } },
   faktur:      { label:'Faktur Baru',       jalan:function(){ openDokEditor('faktur'); } },
+  kuitansi:    { label:'Kuitansi Baru',     jalan:function(){ openDokEditor('kuitansi'); } },
   kas:         { label:'Catat Transaksi',   jalan:function(){ kasSub='ringkasan'; openKasEditor(); } },
   stok:        { label:'Barang Baru',       jalan:function(){ openStokEditor(); } },
   users:       { label:'User Baru',         jalan:function(){ openUserEditor(); } }
@@ -1194,7 +1218,7 @@ function segarkanFab(){
   fab.style.visibility = sembunyi ? 'hidden' : 'visible';
 }
 
-var TITLES = { dashboard:'Dasbor', invoices:'Invoice', clients:'Klien', recurring:'Tagihan Berulang', berita:'Berita Acara', kas:'Pembukuan', stok:'Stok & Inventaris', nota:'Nota', suratjalan:'Surat Jalan', faktur:'Faktur', tax:'Laporan Pajak', logs:'Log Aktivitas', settings:'Pengaturan', users:'Manajemen User' };
+var TITLES = { dashboard:'Dasbor', invoices:'Invoice', clients:'Klien', recurring:'Tagihan Berulang', berita:'Berita Acara', kas:'Pembukuan', stok:'Stok & Inventaris', nota:'Nota', suratjalan:'Surat Jalan', faktur:'Faktur', kuitansi:'Kuitansi', tax:'Laporan Pajak', logs:'Log Aktivitas', settings:'Pengaturan', users:'Manajemen User' };
 
 function buildSidebar(){
   var html = NAV.filter(function(n){ return !n.adminOnly || state.user.role === 'admin'; })
@@ -1220,7 +1244,7 @@ function goLangsung(tab){   // pindah tab TANPA menambah riwayat (dipakai tombol
   if(tab==='settings'){ _logoData = null; _appLogoData = null; _stampData = null; _signatureData = null; }
   $('pageTitle').textContent = TITLES[tab] || 'Dasbor';
   document.querySelectorAll('.bn-item').forEach(function(b){
-    b.classList.toggle('active', b.dataset.tab === tab || (b.dataset.tab==='more' && ['recurring','berita','nota','suratjalan','faktur','kas','stok','tax','logs','settings','users'].indexOf(tab)!==-1));
+    b.classList.toggle('active', b.dataset.tab === tab || (b.dataset.tab==='more' && ['recurring','berita','nota','suratjalan','faktur','kuitansi','kas','stok','tax','logs','settings','users'].indexOf(tab)!==-1));
   });
   document.querySelectorAll('.sb-item').forEach(function(b){ b.classList.toggle('active', b.dataset.tab === tab); });
   segarkanFab();
@@ -1234,6 +1258,7 @@ function showMore(){
     { tab:'kas', label:'Pembukuan' },
     { tab:'stok', label:'Stok & Inventaris' },
     { tab:'berita', label:'Berita Acara' },
+    { tab:'kuitansi', label:'Kuitansi' },
     { tab:'nota', label:'Nota' },
     { tab:'suratjalan', label:'Surat Jalan' },
     { tab:'faktur', label:'Faktur' },
@@ -1410,6 +1435,7 @@ function render(){
     case 'nota': body = viewDokumen('nota'); break;
     case 'suratjalan': body = viewDokumen('surat-jalan'); break;
     case 'faktur': body = viewDokumen('faktur'); break;
+    case 'kuitansi': body = viewDokumen('kuitansi'); break;
     case 'tax': body = viewTax(); break;
     case 'logs': body = viewLogs(); break;
     case 'settings': body = viewSettings(); break;
@@ -2299,6 +2325,12 @@ function _terbilang(n){
   if(n < 1000) return _terbilang(Math.floor(n/100))+' ratus'+(n%100? ' '+_terbilang(n%100):'');
   if(n < 2000) return 'seribu'+(n%1000? ' '+_terbilang(n%1000):'');
   if(n < 1000000) return _terbilang(Math.floor(n/1000))+' ribu'+(n%1000? ' '+_terbilang(n%1000):'');
+  // Sebelumnya berhenti di ratusan ribu dan mengembalikan angka mentah —
+  // tidak terlihat karena hanya dipakai untuk tahun pada berita acara,
+  // tetapi fatal untuk nominal kuitansi.
+  if(n < 1000000000) return _terbilang(Math.floor(n/1000000))+' juta'+(n%1000000? ' '+_terbilang(n%1000000):'');
+  if(n < 1000000000000) return _terbilang(Math.floor(n/1000000000))+' miliar'+(n%1000000000? ' '+_terbilang(n%1000000000):'');
+  if(n < 1000000000000000) return _terbilang(Math.floor(n/1000000000000))+' triliun'+(n%1000000000000? ' '+_terbilang(n%1000000000000):'');
   return String(n);
 }
 function titleWords(str){ return String(str).split(' ').map(function(w){ return w? w.charAt(0).toUpperCase()+w.slice(1):w; }).join(' '); }
@@ -2354,7 +2386,8 @@ function newBeritaState(){
     narasiPembuka: jn.pengantar,
     items:[{ nama:'', jumlah:'', satuan:'', keterangan:'' }],
     penutup:'Demikian Berita Acara ini dibuat dengan sebenar-benarnya dalam rangkap secukupnya dan ditandatangani oleh masing-masing pihak untuk dapat dipergunakan sebagaimana mestinya.',
-    ttd1:'', ttd2:'', cap1:'', cap2:'', invoiceId:'', invoiceNumber:'', catatan:''
+    ttd1:'', ttd2:'', cap1:'', cap2:'', invoiceId:'', invoiceNumber:'', catatan:'',
+    perluMaterai:false, materaiSeri:'', materaiTgl:''
   };
 }
 function openBeritaEditor(id){
@@ -2379,7 +2412,8 @@ function normalizeBa(f){
     narasiPembuka:f.narasiPembuka||baJenis(f.jenis).pengantar,
     items:(f.items&&f.items.length)?f.items:[{nama:'',jumlah:'',satuan:'',keterangan:''}],
     penutup:f.penutup||'', ttd1:f.ttd1||'', ttd2:f.ttd2||'', cap1:f.cap1||'', cap2:f.cap2||'',
-    invoiceId:f.invoiceId||'', invoiceNumber:f.invoiceNumber||'', catatan:f.catatan||''
+    invoiceId:f.invoiceId||'', invoiceNumber:f.invoiceNumber||'', catatan:f.catatan||'',
+    perluMaterai:f.perluMaterai===true, materaiSeri:f.materaiSeri||'', materaiTgl:f.materaiTgl||''
   };
 }
 function baOnJenis(v){
@@ -2455,6 +2489,11 @@ function renderBeritaEditor(){
     '<div class="section-title">Rincian</div>' + itemRows +
     '<button class="btn btn-ghost btn-sm" onclick="baState.items.push({nama:\'\',jumlah:\'\',satuan:\'\',keterangan:\'\'});renderBeritaEditor()">+ Tambah Baris</button>' +
     '<div class="field" style="margin-top:12px"><label>Penutup</label><textarea rows="2" oninput="baState.penutup=this.value">'+esc(b.penutup)+'</textarea></div>' +
+    '<div class="section-title">e-Meterai</div>' +
+    '<label class="check-row"><input type="checkbox" '+(b.perluMaterai?'checked':'')+
+      ' onchange="baState.perluMaterai=this.checked"> Sediakan ruang e-Meterai pada dokumen</label>' +
+    '<p class="mini">Berita acara dan perjanjian yang bersifat perdata umumnya wajib bermeterai. ' +
+      '<a href="javascript:void(0)" onclick="openPanduanMaterai()" style="color:var(--accent-deep);font-weight:700">Lihat caranya</a></p>' +
     '<div class="section-title">Tanda Tangan Digital</div>' +
     '<div class="grid-2">'+sig(1,'ttd1','cap1','PIHAK KESATU')+sig(2,'ttd2','cap2','PIHAK KEDUA')+'</div>' +
     '<div class="modal-actions">' +
@@ -2624,6 +2663,7 @@ function openBeritaDetail(id){
         (state.user.role==='admin'?'<button class="btn btn-danger btn-sm" onclick="deleteBerita(\''+full.id+'\')">Hapus</button>':'') +
         '<button class="btn btn-ghost btn-sm" onclick="openBeritaEditor(\''+full.id+'\')">Edit</button>' +
         (full.ttd2?'':'<button class="btn btn-ghost btn-sm" onclick="shareSignLink(\''+full.id+'\',\'berita\')">🔗 Minta TTD PIHAK KEDUA</button>') +
+        (full.perluMaterai?'<button class="btn btn-ghost btn-sm" onclick="openCatatMaterai(\'berita\',\''+full.id+'\')">🧾 Catat e-Meterai</button>':'') +
         '<button class="btn btn-primary btn-sm" onclick="printBerita(_baCurrent)">Cetak / PDF</button>' +
       '</div></div>');
   }).catch(function(e){ loading(false); toast(e.message); });
@@ -2680,6 +2720,7 @@ function printBerita(b){
     '</div>' +
     '<div style="text-align:right;margin-top:18px">'+placeLine+'</div>' +
     '<div class="ba-sign">'+sign('PIHAK KESATU', b.pihak1||{}, b.ttd1, b.cap1)+
+      (kotakMaterai(b)?'<div class="ba-col mt-col">'+kotakMaterai(b)+'</div>':'')+
       sign('PIHAK KEDUA', { nama:(b.ttd2Name||(b.pihak2||{}).nama), jabatan:(b.pihak2||{}).jabatan }, b.ttd2, b.cap2)+'</div>' +
   '</div>';
   openPratinjau((b.judul || 'Berita Acara') + (b.nomor ? ' ' + b.nomor : ''), html);
@@ -2694,7 +2735,8 @@ function printBerita(b){
 var DOK_META = {
   'nota': { label:'Nota', prefix:'NOTA', harga:true, judul:'NOTA' },
   'surat-jalan': { label:'Surat Jalan', prefix:'SJ', harga:false, judul:'SURAT JALAN' },
-  'faktur': { label:'Faktur', prefix:'FKT', harga:true, judul:'FAKTUR' }
+  'faktur': { label:'Faktur', prefix:'FKT', harga:true, judul:'FAKTUR' },
+  'kuitansi': { label:'Kuitansi', prefix:'KW', harga:true, judul:'KUITANSI' }
 };
 function dokMeta(j){ return DOK_META[j] || DOK_META['nota']; }
 var dokQ = '';
@@ -2742,6 +2784,7 @@ function newDokState(jenis){
     perhatian: (jenis==='nota' ? '- Pesanan disertai uang muka 50% dari jumlah pesanan\n- Barang yang sudah diambil tidak bisa ditukar/dikembalikan' : ''),
     extra:{ sopir:'', kondektur:'', noPolisi:'', jam:'', poNumber:'', jatuhTempo:'' },
     invoiceId:'', invoiceNumber:'',
+    perluMaterai:false, materaiSeri:'', materaiTgl:'',
     signature:'', stamp:'', signerName:(s.signerName||''), signerTitle:(s.signerTitle||''),
     clientSignature:'', clientSignerName:'', clientSignedAt:'', tokenActive:false
   };
@@ -2756,6 +2799,9 @@ function openDokEditor(jenis, id){
       if(!dokState.items || !dokState.items.length) dokState.items=[{ name:'', quantity:1, price:0, total:0 }];
       if(!dokState.extra) dokState.extra = {};
       if(dokState.extra.stampColor) dokState.stampColor = dokState.extra.stampColor;
+      dokState.perluMaterai = dokState.extra.perluMaterai === true;
+      dokState.materaiSeri = dokState.extra.materaiSeri || '';
+      dokState.materaiTgl = dokState.extra.materaiTgl || '';
       renderDokEditor();
     }).catch(function(e){ loading(false); toast(e.message); });
   } else {
@@ -2800,6 +2846,7 @@ function syncDokFields(){
   if($('dkDiscount')) d.discountRate = Number($('dkDiscount').value)||0;
   if($('dkTax')) d.taxRate = Number($('dkTax').value)||0;
   if($('dkCurrency')) d.currency = $('dkCurrency').value;
+  if($('dkMaterai')) d.perluMaterai = $('dkMaterai').checked;
   if($('dkSignerName')) d.signerName = $('dkSignerName').value.trim();
   if($('dkSignerTitle')) d.signerTitle = $('dkSignerTitle').value.trim();
   d.extra = d.extra||{};
@@ -2880,6 +2927,14 @@ function renderDokEditor(){
     '<div style="margin-top:14px"></div>' + hargaBlok +
     '<div class="field"><label>Catatan</label><textarea id="dkNotes" rows="2">'+esc(d.notes||'')+'</textarea></div>' +
     (d.jenis!=='surat-jalan' ? '<div class="field"><label>Perhatian (tampil di dokumen)</label><textarea id="dkPerhatian" rows="2">'+esc(d.perhatian||'')+'</textarea></div>' : '') +
+    '<div class="section-title">e-Meterai</div>' +
+    '<label class="check-row"><input type="checkbox" id="dkMaterai" '+(d.perluMaterai?'checked':'')+
+      ' onchange="dokState.perluMaterai=this.checked"> Sediakan ruang e-Meterai pada dokumen</label>' +
+    (wajibMaterai(t.total, d.jenis) && !d.perluMaterai
+      ? '<div class="lic-warn" style="background:#FFF6E5;border-color:#E9A23B;color:#8A5A10">Nilai dokumen di atas Rp 5.000.000 — dokumen semacam ini umumnya <b>wajib bermeterai</b>. Centang pilihan di atas agar tersedia ruang khusus untuk e-Meterai.</div>'
+      : '') +
+    '<p class="mini">Aplikasi menyediakan ruangnya saja; pembubuhan dilakukan di portal distributor resmi. ' +
+      '<a href="javascript:void(0)" onclick="openPanduanMaterai()" style="color:var(--accent-deep);font-weight:700">Lihat caranya</a></p>' +
     '<div class="section-title">Tanda Tangan & Cap Penerbit</div>' +
     '<div class="grid-2">' +
       '<div class="field"><label>Nama Penanda Tangan</label><input id="dkSignerName" value="'+esc(d.signerName||'')+'"></div>' +
@@ -2916,6 +2971,12 @@ function renderDokEditor(){
 }
 function refreshDokSummary(){
   var el = $('dokSummary'); if(el) el.innerHTML = dokSummaryHtml(dokTotals(dokState), dokState.currency);
+  // Sarankan meterai begitu nilainya melewati batas
+  var cb = $('dkMaterai');
+  if(cb && !cb.checked && wajibMaterai(dokTotals(dokState).total, dokState.jenis)){
+    cb.checked = true; dokState.perluMaterai = true;
+    toast('Nilai di atas Rp 5 juta — ruang e-Meterai disiapkan');
+  }
 }
 function addDokItem(){ syncDokFields(); dokState.items.push({ name:'', quantity:1, price:0, total:0, keterangan:'' }); renderDokEditor(); }
 function delDokItem(i){
@@ -2989,6 +3050,9 @@ function saveDokumen(){
   var t = dokTotals(d);
   d.subtotal=t.subtotal; d.discountAmount=t.discountAmount; d.taxAmount=t.taxAmount; d.total=t.total;
   d.extra = d.extra||{}; d.extra.stampColor = dokStampColor();
+  d.extra.perluMaterai = d.perluMaterai === true;
+  d.extra.materaiSeri = d.materaiSeri || '';
+  d.extra.materaiTgl = d.materaiTgl || '';
   loading(true);
   api('saveDokumen', d).then(function(rec){
     // Perbarui daftar di memori saja — jauh lebih ringan daripada memuat ulang semuanya
@@ -3014,10 +3078,13 @@ function openDokDetail(id){
       '<div class="detail-row"><span>Klien</span><b>'+esc(d.clientName||'-')+'</b></div>' +
       (meta.harga?'<div class="detail-row"><span>Jumlah</span><b>'+fmtMoney(d.total,d.currency)+'</b></div>':'') +
       (d.invoiceNumber?'<div class="detail-row"><span>Invoice</span><b>'+esc(d.invoiceNumber)+'</b></div>':'') +
+      (((d.extra||{}).perluMaterai) ? '<div class="detail-row"><span>e-Meterai</span><b>' +
+        ((d.extra||{}).materaiSeri ? ('✓ ' + esc(d.extra.materaiSeri)) : 'Ruang disediakan — belum dibubuhkan') + '</b></div>' : '') +
       ttdInfo +
       '<div class="modal-actions" style="flex-wrap:wrap">' +
         (state.user.role==='admin'?'<button class="btn btn-danger btn-sm" onclick="deleteDokumen(\''+d.id+'\')">Hapus</button>':'') +
         '<button class="btn btn-ghost btn-sm" onclick="openDokEditor(\''+d.jenis+'\',\''+d.id+'\')">Edit</button>' +
+        (((d.extra||{}).perluMaterai) ? '<button class="btn btn-ghost btn-sm" onclick="openCatatMaterai(\'dokumen\',\''+d.id+'\')">🧾 Catat e-Meterai</button>' : '') +
         (d.clientSignature?'':'<button class="btn btn-ghost btn-sm" onclick="shareSignLink(\''+d.id+'\')">🔗 Minta TTD Klien</button>') +
         '<button class="btn btn-primary btn-sm" onclick="printDokumen(_dokCurrent)">Cetak / PDF</button>' +
       '</div></div>');
@@ -3072,6 +3139,12 @@ function copyText(txt){
 
 function printDokumen(d){
   var s = state.db.settings||{}, meta = dokMeta(d.jenis);
+  // Ruas materai tersimpan di extra
+  var ex0 = d.extra||{};
+  d.perluMaterai = (d.perluMaterai !== undefined) ? d.perluMaterai : ex0.perluMaterai === true;
+  d.materaiSeri = d.materaiSeri || ex0.materaiSeri || '';
+  d.materaiTgl = d.materaiTgl || ex0.materaiTgl || '';
+  if(d.jenis === 'kuitansi'){ printKuitansi(d, s); return; }
   var logo = s.logoUrl ? '<img class="dok-logo" src="'+esc(s.logoUrl)+'" alt="logo" onerror="this.style.display=\'none\'">' : '';
   var ex = d.extra||{};
   var rows = (d.items||[]).map(function(it,i){
@@ -3114,6 +3187,7 @@ function printDokumen(d){
   };
   var ttdKlien = signBox('Tanda terima,', d.clientSignerName||d.clientName, d.clientSignature, '', d.clientSignedAt);
   var ttdKami = signBox('Hormat kami,', d.signerName||s.companyName, d.signature, d.stamp, '') ;
+  var kotakMt = kotakMaterai(d);
 
   var html = '<div class="print-sheet dok-sheet">' +
     '<div class="dok-head"><div class="dok-brand">'+logo+
@@ -3125,9 +3199,51 @@ function printDokumen(d){
     '<table class="dok-items">'+head+rows+'</table>' + totalBlok +
     (d.perhatian?'<div class="dok-note"><b>Perhatian!</b><br>'+esc(d.perhatian).replace(/\n/g,'<br>')+'</div>':'') +
     (d.notes?'<div class="dok-note2"><b>Catatan:</b> '+esc(d.notes)+'</div>':'') +
-    '<div class="dok-sign">'+ttdKlien+ttdKami+'</div>' +
+    '<div class="dok-sign">'+ttdKlien+
+      (kotakMt?'<div class="dok-col mt-col">'+kotakMt+'</div>':'')+ttdKami+'</div>' +
   '</div>';
   openPratinjau(meta.label + (d.nomor ? ' ' + d.nomor : ''), html);
+}
+
+/* Kuitansi memakai tata letak khusus: bukan tabel barang, melainkan
+   pernyataan penerimaan uang lengkap dengan terbilang. */
+function printKuitansi(d, s){
+  var cur = d.currency || 'IDR';
+  var logo = s.logoUrl ? '<img class="dok-logo" src="'+esc(s.logoUrl)+'" alt="logo" onerror="this.style.display=\'none\'">' : '';
+  var uraian = (d.items||[]).filter(function(it){ return it.name; })
+    .map(function(it){ return it.name + (Number(it.quantity)>1 ? (' ('+it.quantity+')') : ''); }).join(', ');
+  var terbilang = titleWords(_terbilang(Math.round(Number(d.total)||0))) + ' Rupiah';
+
+  var html = '<div class="print-sheet dok-sheet kw-sheet">' +
+    '<div class="dok-head"><div class="dok-brand">'+logo+
+      '<div><div class="dok-co">'+esc(s.companyName||'')+'</div>' +
+      '<div class="dok-co-sub">'+esc(s.companyAddress||'')+'<br>'+esc(s.companyPhone||'')+'</div></div></div>' +
+      '<div class="dok-to"><div class="dok-place">'+(d.tempat?esc(d.tempat)+', ':'')+fmtDate(d.tanggal)+'</div></div></div>' +
+    '<div class="dok-title"><h2>KUITANSI</h2><div class="dok-no">No. '+esc(d.nomor||'-')+'</div></div>' +
+    '<div class="kw-body">' +
+      '<div class="kw-row"><span class="kw-l">Sudah terima dari</span><span class="kw-v">'+esc(d.clientName||'-')+
+        (d.clientCompany?' — '+esc(d.clientCompany):'')+'</span></div>' +
+      '<div class="kw-row"><span class="kw-l">Uang sejumlah</span><span class="kw-v kw-terbilang">'+esc(terbilang)+'</span></div>' +
+      '<div class="kw-row"><span class="kw-l">Untuk pembayaran</span><span class="kw-v">'+esc(uraian || d.notes || '-')+'</span></div>' +
+    '</div>' +
+    '<div class="kw-bawah">' +
+      '<div class="kw-jml"><span>Rp</span><b>'+fmtMoney(d.total,cur).replace(/^Rp\s*/,'')+'</b></div>' +
+      '<div class="kw-ttd">' +
+        '<div class="kw-ttd-in">' +
+          (kotakMaterai(d)?'<div class="mt-col">'+kotakMaterai(d)+'</div>':'') +
+          '<div class="dok-col">' +
+            '<div class="dok-role">'+(d.tempat?esc(d.tempat)+', ':'')+fmtDate(d.tanggal)+'</div>' +
+            '<div class="dok-ttd">'+(d.stamp?'<img class="dok-cap" src="'+esc(d.stamp)+'" alt="cap">':'')+
+              (d.signature?'<img class="dok-sig" src="'+esc(d.signature)+'" alt="ttd">':'')+'</div>' +
+            '<div class="dok-nama">'+esc(d.signerName||s.companyName||'(...............)')+'</div>' +
+            (d.signerTitle?'<div class="dok-job">'+esc(d.signerTitle)+'</div>':'') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    (d.notes && uraian ? '<div class="dok-note2"><b>Catatan:</b> '+esc(d.notes)+'</div>' : '') +
+  '</div>';
+  openPratinjau('Kuitansi' + (d.nomor ? ' ' + d.nomor : ''), html);
 }
 
 /* ---- Cap basah: pewarnaan kustom (ambang luminansi → 1 warna, latar transparan) ---- */
@@ -3439,6 +3555,91 @@ function unduhKasCsv(){
   toast('CSV diunduh ✓');
 }
 
+
+
+/* ============================================================
+   E-METERAI (siap-bubuh)
+   Aplikasi TIDAK membubuhkan meterai — pembubuhan hanya sah bila
+   dilakukan lewat distributor resmi Peruri. Yang disiapkan di sini:
+   deteksi kewajiban, ruang kosong di dokumen agar QR meterai tidak
+   menimpa tanda tangan, dan pencatatan nomor seri setelah dibubuhkan.
+============================================================ */
+var MATERAI_MIN = 5000000;      // UU No. 10/2020: di atas Rp5.000.000
+var MATERAI_JENIS = { kuitansi:1, faktur:1, nota:1 };   // yang lazim memerlukan
+function wajibMaterai(total, jenis){
+  if(jenis && !MATERAI_JENIS[jenis]) return false;
+  return (Number(total)||0) > MATERAI_MIN;
+}
+var DISTRIBUTOR_MATERAI = [
+  { n:'Peruri Digital Security', u:'https://e-meterai.co.id/' },
+  { n:'Mitra Pajakku', u:'https://pajakku.e-meterai.co.id' },
+  { n:'Mitracomm Ekasarana', u:'https://mitracomm.e-meterai.co.id' },
+  { n:'DLI', u:'https://dli.e-meterai.co.id' },
+  { n:'Pos Indonesia', u:'https://posind.e-meterai.co.id/' }
+];
+function openPanduanMaterai(){
+  openModal('<div class="modal" style="max-width:600px"><h3>Cara Membubuhkan e-Meterai</h3>' +
+    '<div class="legal" style="max-height:58vh;overflow-y:auto;padding-right:4px">' +
+    '<div class="lic-warn" style="background:#FFF6E5;border-color:#E9A23B;color:#8A5A10">' +
+      '<b>Penting:</b> aplikasi ini <b>tidak</b> membubuhkan e-Meterai. Menempelkan gambar meterai ke dokumen ' +
+      'tidak membuatnya sah dan berisiko pidana pemalsuan. Pembubuhan hanya sah melalui distributor resmi Peruri.</div>' +
+    '<h4>Langkah</h4>' +
+    '<ol style="margin-left:18px">' +
+      '<li>Cetak dokumen dari aplikasi ini menjadi <b>PDF</b> (maksimal 10 MB).</li>' +
+      '<li>Buka portal distributor resmi, daftar akun, lalu beli kuota meterai (Rp 10.000 per lembar).</li>' +
+      '<li>Unggah PDF, lalu seret gambar meterai ke <b>kotak putus-putus bertanda "Ruang e-Meterai"</b> yang sudah disediakan di dokumen.</li>' +
+      '<li>Unduh kembali PDF yang sudah dibubuhi meterai — inilah berkas resmi yang dikirim ke klien.</li>' +
+      '<li>Kembali ke aplikasi, buka dokumennya, lalu catat <b>nomor seri meterai</b> untuk arsip Anda.</li>' +
+    '</ol>' +
+    '<h4>Kenapa perlu ruang khusus?</h4>' +
+    '<p>e-Meterai berbentuk <b>QR Code</b>. Bila posisinya menimpa tanda tangan, QR tidak terbaca saat verifikasi dan dokumen bisa dianggap tidak valid. Karena itu aplikasi menyediakan ruang kosong tersendiri di samping tanda tangan.</p>' +
+    '<h4>Dokumen apa yang wajib bermeterai?</h4>' +
+    '<p>Menurut UU No. 10 Tahun 2020, antara lain dokumen yang menyatakan <b>penerimaan uang atau pelunasan utang di atas Rp 5.000.000</b> (kuitansi), surat perjanjian, dan berita acara yang bersifat perdata. <b>Invoice/tagihan murni umumnya tidak wajib</b> bermeterai.</p>' +
+    '<p class="mini">Keterangan ini bersifat umum, bukan nasihat perpajakan. Untuk kepastian, konsultasikan dengan konsultan pajak Anda.</p>' +
+    '<h4>Distributor resmi</h4>' +
+    DISTRIBUTOR_MATERAI.map(function(d){
+      return '<div style="padding:5px 0"><a href="'+esc(d.u)+'" target="_blank" style="color:var(--accent-deep);font-weight:700">'+esc(d.n)+'</a><div class="mini">'+esc(d.u)+'</div></div>';
+    }).join('') +
+    '<p class="mini" style="margin-top:10px">Keaslian dokumen dapat diperiksa lewat aplikasi Peruri Scanner atau portal verifikasi resmi Peruri.</p>' +
+    '</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Tutup</button></div></div>');
+}
+/* Kotak ruang meterai pada hasil cetak */
+function kotakMaterai(d){
+  if(!d || !d.perluMaterai) return '';
+  if(d.materaiSeri){
+    return '<div class="materai-box terisi"><div class="mt-l">e-METERAI</div>' +
+      '<div class="mt-s">'+esc(d.materaiSeri)+'</div>' +
+      (d.materaiTgl?'<div class="mt-t">'+fmtDate(d.materaiTgl)+'</div>':'') + '</div>';
+  }
+  return '<div class="materai-box"><div class="mt-l">Ruang<br>e-Meterai</div><div class="mt-s">bubuhkan di sini</div></div>';
+}
+/* Catat nomor seri setelah dokumen dibubuhi di portal distributor */
+function openCatatMaterai(jenis, id){
+  if(!guardWrite()) return;
+  var d = (jenis==='berita') ? _baCurrent : _dokCurrent;
+  if(!d) return;
+  openModal('<div class="modal narrow"><h3>Catat e-Meterai</h3>' +
+    '<p class="mini" style="margin-bottom:12px">Isi setelah dokumen dibubuhi meterai di portal distributor resmi. Nomor seri tertera pada gambar meterai di PDF hasil pembubuhan.</p>' +
+    '<div class="field"><label>Nomor Seri Meterai</label><input id="mtSeri" value="'+esc(d.materaiSeri||'')+'" placeholder="mis. 0012345678901234"></div>' +
+    '<div class="field"><label>Tanggal Pembubuhan</label><input id="mtTgl" type="date" value="'+esc(d.materaiTgl||todayStr())+'"></div>' +
+    '<button class="btn btn-ghost btn-block" onclick="openPanduanMaterai()">❔ Cara membubuhkan e-Meterai</button>' +
+    '<div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Batal</button>' +
+    '<button class="btn btn-primary" onclick="simpanCatatMaterai(\'' + jenis + '\')">Simpan</button></div></div>');
+}
+function simpanCatatMaterai(jenis){
+  var seri = ($('mtSeri').value||'').trim(), tgl = $('mtTgl').value;
+  loading(true);
+  if(jenis === 'berita'){
+    var b = _baCurrent; b.perluMaterai = true; b.materaiSeri = seri; b.materaiTgl = tgl;
+    api('saveBeritaAcara', b).then(function(){ closeModal(); toast('Nomor seri tercatat ✓'); return reloadData(false); })
+      .catch(function(e){ loading(false); toast(e.message); });
+  } else {
+    var d = _dokCurrent;
+    d.extra = d.extra||{}; d.extra.perluMaterai = true; d.extra.materaiSeri = seri; d.extra.materaiTgl = tgl;
+    api('saveDokumen', d).then(function(){ closeModal(); toast('Nomor seri tercatat ✓'); return reloadData(false); })
+      .catch(function(e){ loading(false); toast(e.message); });
+  }
+}
 
 /* ---------------- IMPOR DATA LAMA (CSV) ---------------- */
 var _imporBaris = [];
@@ -4702,6 +4903,7 @@ function muatUlangPembaruan(){
 </script>
 </body>
 </html>
+
 
 
 
